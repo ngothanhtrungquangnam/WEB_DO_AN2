@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Bàn - Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* (Toàn bộ CSS của bạn giữ nguyên... ) */
+        body { background-color: #f4f4f4; margin: 0; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 1rem; }
+        .admin-header {
+            text-align: center; color: #333; font-size: 2rem;
+            margin-bottom: 2rem; display: flex; align-items: center;
+            justify-content: center; gap: 10px;
+        }
+        .legend { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .legend-color { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ccc; }
+        .legend-trong { background-color: #e8f5e9; border-color: #4caf50; }
+        .legend-daphucvu { background-color: #fff3e0; border-color: #ff9800; }
+        .table-map {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 1.2rem;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .table-item {
+            border: 2px solid; border-radius: 8px; padding: 2rem 0.5rem;
+            text-align: center; font-weight: bold; font-size: 1.1rem;
+            cursor: pointer; transition: all 0.2s ease; position: relative;
+        }
+        .table-item.status-trong {
+            border-color: #66bb6a; color: #388e3c; background: #e8f5e9;
+        }
+        .table-item.status-trong:hover {
+            background: #c8e6c9; transform: scale(1.05);
+        }
+        .table-item.status-dang-phuc-vu {
+            border-color: #ffa726; color: #f57c00; background: #fff3e0;
+        }
+        .table-item.status-dang-phuc-vu:hover {
+            background: #ffe0b2; transform: scale(1.05);
+        }
+        .table-item .order-total {
+            position: absolute; bottom: 8px; left: 0; width: 100%;
+            font-size: 0.9rem; color: #d84315; font-weight: bold;
+        }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); display: none;
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: #fff; border-radius: 10px; padding: 0;
+            width: 90%; max-width: 500px;
+            max-height: 90vh; 
+            display: flex; flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            padding: 1rem 1.5rem; border-bottom: 1px solid #eee;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        .modal-header h3 { margin: 0; color: var(--main-color, #ff7043); }
+        .modal-close { font-size: 2rem; font-weight: bold; cursor: pointer; color: #888; }
+        .modal-body { 
+            padding: 1.5rem; 
+            overflow-y: auto;
+        }
+        .modal-body .info-group { margin-bottom: 1rem; }
+        .modal-body .info-group strong { color: #333; }
+        .modal-body .info-group p { margin: 4px 0; color: #555; }
+        .modal-items { border-top: 1px dashed #ddd; border-bottom: 1px dashed #ddd; padding: 1rem 0; }
+        .modal-item { display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 5px; }
+        .modal-total { text-align: right; font-size: 1.3rem; font-weight: bold; margin: 1rem 0; }
+        .modal-actions { 
+            text-align: center; padding: 0 1.5rem 1.5rem; 
+            flex-shrink: 0;
+        }
+        .status-badge { padding: 4px 10px; border-radius: 15px; font-weight: 500; font-size: 0.8rem; display: inline-block; }
+        .status-moi { background-color: #e0f7fa; color: #007bff; }
+        .status-dang-xu-ly { background-color: #fffde7; color: #f59e0b; }
+        .status-hoan-thanh { background-color: #e8f5e9; color: #4caf50; }
+        .payment-paid { color: #4caf50; font-weight: bold; }
+        .payment-unpaid { color: #f59e0b; font-weight: bold; }
+        .action-buttons button {
+            border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer;
+            font-size: 0.9rem; font-weight: 500; margin: 5px;
+            transition: opacity 0.2s;
+        }
+        .action-buttons button:hover { opacity: 0.8; }
+        .btn-processing { background-color: #007bff; color: white; }
+        .btn-complete { background-color: #28a745; color: white; }
+        .btn-cancel { background-color: #dc3545; color: white; }
+        .btn-delete { background-color: #6c757d; color: white; }
+        .btn-mark-paid { background-color: #17a2b8; color: white; }
+        .btn-release-table { background-color: #ffc107; color: #333; }
+    </style>
+</head>
+<body>
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="container">
+        <h2 class="admin-header">Sơ đồ Quản lý bàn</h2>
+        
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color legend-trong"></div><span>Trống</span></div>
+            <div class="legend-item"><div class="legend-color legend-daphucvu"></div><span>Đang phục vụ</span></div>
+        </div>
+
+        <div id="tableMapContainer" class="table-map">
+            <p style="grid-column: 1 / -1; text-align: center; color: #888;">Đang tải sơ đồ bàn...</p>
+        </div>
+    </main>
+
+    <div id="orderDetailModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Chi tiết đơn hàng</h3>
+                <span class="modal-close" id="closeModalBtn">&times;</span>
+            </div>
+            <div class="modal-body" id="modalBodyContent">
+                </div>
+        </div>
+    </div>
+    
+    <footer style="text-align: center; padding: 20px; margin-top: 20px;">
+        <p>© 2025 Quán Ăn Ngon 24h</p>
+    </footer>
+
+    <script>
+        let userInfo = null;
+        let socket = null;
+        
+        // === CÁC HÀM XỬ LÝ API (GỌI KHI BẤM NÚT TRONG MODAL) ===
+        // (Giữ nguyên các hàm: handleUpdateStatus, handleDeleteOrder, handleMarkAsPaid, handleReleaseTable)
+        async function handleUpdateStatus(orderId, newStatus) {
+            if (!confirm(`Cập nhật đơn #${orderId.substring(0, 6)} thành "${newStatus}"?`)) return;
+            try {
+                const response = await fetch(`/api/donhang/status/${orderId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userInfo.token}` },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (!response.ok) throw new Error((await response.json()).message);
+                closeModal();
+            } catch (err) { alert(`Lỗi: ${err.message}`); }
+        }
+        async function handleDeleteOrder(orderId) {
+            if (!confirm(`Bạn có chắc muốn XÓA VĨNH VIỄN đơn hàng #${orderId.substring(0, 6)}?`)) return;
+            try {
+                const response = await fetch(`/api/donhang/${orderId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${userInfo.token}` }
+                });
+                if (!response.ok) throw new Error((await response.json()).message);
+                closeModal();
+            } catch (err) { alert(`Lỗi: ${err.message}`); }
+        }
+        async function handleMarkAsPaid(orderId) {
+            if (!confirm(`Xác nhận THU TIỀN (COD) cho đơn #${orderId.substring(0, 6)}?`)) return;
+            try {
+                const response = await fetch(`/api/donhang/mark-paid/${orderId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${userInfo.token}` }
+                });
+                if (!response.ok) throw new Error((await response.json()).message);
+                closeModal();
+            } catch (err) { alert(`Lỗi: ${err.message}`); }
+        }
+        async function handleReleaseTable(orderId) {
+            if (!confirm(`Bạn có chắc muốn TRẢ BÀN cho đơn hàng #${orderId.substring(0, 6)}?`)) return;
+            try {
+                const response = await fetch(`/api/donhang/release-table/${orderId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${userInfo.token}` }
+                });
+                if (!response.ok) throw new Error((await response.json()).message);
+                closeModal();
+            } catch (err) { alert(`Lỗi: ${err.message}`); }
+        }
+        
+        // === CÁC HÀM HIỂN THỊ (RENDER) ===
+
+        // 4. Tải và Vẽ Sơ đồ bàn (ĐÃ SỬA LỖI LOGIC)
+        async function loadDataAndRenderMap() {
+            const mapContainer = document.getElementById('tableMapContainer');
+            
+            if (!mapContainer.querySelector('.table-item')) {
+                 mapContainer.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #888;">Đang tải...</p>';
+            }
+            
+            try {
+                // *** CHỈ CẦN GỌI 1 API ĐỂ LẤY BÀN ***
+                const banResponse = await fetch('/api/ban', { 
+                    headers: { 'Authorization': `Bearer ${userInfo.token}` } 
+                });
+
+                if (!banResponse.ok) throw new Error('Không thể tải sơ đồ bàn');
+                
+                const allTables = await banResponse.json();
+                
+                mapContainer.innerHTML = ''; // Xóa chữ "Đang tải"
+                
+                allTables.sort((a, b) => {
+                    const numA = parseInt(a.soBan.replace('Bàn ', ''));
+                    const numB = parseInt(b.soBan.replace('Bàn ', ''));
+                    return numA - numB;
+                });
+                
+                // Bắt đầu vẽ các bàn
+                allTables.forEach(ban => {
+                    const tableDiv = document.createElement('div');
+                    tableDiv.className = 'table-item';
+                    
+                    // *** DÙNG TRỰC TIẾP ban.trangThai ***
+                    if (ban.trangThai === 'Đang phục vụ') {
+                        // BÀN ĐANG PHỤC VỤ
+                        tableDiv.classList.add('status-dang-phuc-vu');
+                        tableDiv.innerHTML = `<span>${ban.soBan}</span>`;
+                        
+                        if (ban.donHangHienTai) {
+                            // Gán sự kiện click để mở modal
+                            tableDiv.addEventListener('click', () => showOrderDetailModal(ban.donHangHienTai));
+                        } else {
+                            // Lỗi dữ liệu: bàn bận nhưng ko có đơn
+                            tableDiv.addEventListener('click', () => alert(`Lỗi: Bàn ${ban.soBan} đang phục vụ nhưng không tìm thấy ID đơn hàng.`));
+                        }
+                    } else {
+                        // BÀN TRỐNG
+                        tableDiv.classList.add('status-trong');
+                        tableDiv.innerHTML = `<span>${ban.soBan}</span>`;
+                        tableDiv.addEventListener('click', () => {
+                            alert(`Bàn ${ban.soBan} đang trống.`);
+                        });
+                    }
+                    mapContainer.appendChild(tableDiv);
+                });
+
+            } catch (err) {
+                console.error(err);
+                mapContainer.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color: red;">${err.message}</p>`;
+            }
+        }
+        
+        // 5. Hiển thị Modal chi tiết đơn hàng (ĐÃ SỬA: NHẬN VÀO ORDER ID)
+        async function showOrderDetailModal(orderId) { 
+            const modal = document.getElementById('orderDetailModal');
+            const content = document.getElementById('modalBodyContent');
+            
+            modal.style.display = 'flex';
+            content.innerHTML = '<p style="text-align: center; padding: 2rem; color: #888;">Đang tải chi tiết đơn hàng...</p>';
+            
+            try {
+                // === GỌI API ĐỂ LẤY CHI TIẾT (POPULATE) ===
+                const response = await fetch(`/api/donhang/details/${orderId}`, { // Sửa: Dùng orderId
+                    headers: { 'Authorization': `Bearer ${userInfo.token}` }
+                });
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.message || 'Không thể tải chi tiết đơn hàng');
+                }
+                
+                const order = await response.json(); // Đây là đơn hàng đầy đủ
+
+                // SỬA LỖI NaNđ
+                const itemsHtml = order.items.map(item => {
+                    const itemPrice = (item.itemId && item.itemId.gia !== undefined) ? item.itemId.gia : (item.itemId ? item.itemId.price : 0);
+                    const totalItemPrice = (itemPrice * item.quantity) || 0;
+                    return `
+                    <div class="modal-item">
+                        <span>${item.itemId ? item.itemId.name : 'N/A'} (x${item.quantity})</span>
+                        <span>${totalItemPrice.toLocaleString('vi-VN')}đ</span>
+                    </div>`
+                }).join('');
+                
+                const paymentStatus = order.trangThaiThanhToan === 'Đã thanh toán' 
+                    ? `<span class="payment-paid">Đã thanh toán</span>`
+                    : `<span class="payment-unpaid">${order.trangThaiThanhToan}</span>`;
+
+                let statusClass = 'status-moi';
+                if(order.status === 'Đang xử lý') statusClass = 'status-dang-xu-ly';
+                if(order.status === 'Hoàn thành') statusClass = 'status-hoan-thanh';
+                const orderStatus = `<span class="status-badge ${statusClass}">${order.status}</span>`;
+
+                content.innerHTML = `
+                    <div class="info-group">
+                        <strong>Bàn:</strong> <p style="display: inline; font-weight: bold; font-size: 1.1rem;">${order.banId.soBan}</p>
+                    </div>
+                    <div class="info-group">
+                        <strong>Khách hàng:</strong> <p>${order.customerName}</p>
+                    </div>
+                    <div class="info-group">
+                        <strong>Trạng thái:</strong> <p>${orderStatus} &nbsp; ${paymentStatus}</p>
+                    </div>
+                    
+                    <div class="modal-items">${itemsHtml}</div>
+                    <div class="modal-total">Tổng: ${(order.totalPrice || 0).toLocaleString('vi-VN')} VNĐ</div>
+                    
+                    <div class="modal-actions action-buttons" id="modalActionsContainer">
+                    </div>
+                `;
+                
+                const actionsContainer = content.querySelector('#modalActionsContainer');
+                actionsContainer.innerHTML = renderActionButtons(order);
+                attachActionEvents(order, actionsContainer);
+
+            } catch(err) {
+                content.innerHTML = `<p style="text-align: center; padding: 2rem; color: red;">${err.message}</p>`;
+            }
+        }
+        
+        // 6. Đóng Modal
+        function closeModal() {
+            document.getElementById('orderDetailModal').style.display = 'none';
+        }
+
+        // 7. Vẽ các nút hành động (LOGIC MỚI VỚI NÚT "TRẢ BÀN")
+        function renderActionButtons(order) {
+            let buttonsHtml = '';
+            
+            if (order.phuongThucThanhToan === 'Tiền mặt' && order.trangThaiThanhToan !== 'Đã thanh toán') {
+                buttonsHtml += `<button class="btn-mark-paid" data-action="mark-paid">Đã thu tiền (COD)</button>`;
+            }
+
+            if (order.status === 'Mới') {
+                buttonsHtml += `<button class="btn-processing" data-action="processing">Đang xử lý</button>`;
+                buttonsHtml += `<button class="btn-cancel" data-action="cancel">Hủy đơn</button>`;
+            } else if (order.status === 'Đang xử lý') {
+                buttonsHtml += `<button class="btn-complete" data-action="complete">Hoàn thành</button>`;
+                buttonsHtml += `<button class="btn-cancel" data-action="cancel">Hủy đơn</button>`;
+            }
+            
+            // Nút TRẢ BÀN (Chỉ hiện khi đã Hoàn thành VÀ Đã thanh toán)
+            if (order.status === 'Hoàn thành' && order.trangThaiThanhToan === 'Đã thanh toán') {
+                 buttonsHtml += `<button class="btn-release-table" data-action="release-table">Trả bàn</button>`;
+            }
+
+            buttonsHtml += `<button class="btn-delete" data-action="delete">Xóa Đơn</button>`;
+            return buttonsHtml;
+        }
+        
+        // 8. Gắn sự kiện cho các nút
+        function attachActionEvents(order, container) {
+            container.querySelector('[data-action="processing"]')?.addEventListener('click', () => handleUpdateStatus(order._id, 'Đang xử lý'));
+            container.querySelector('[data-action="complete"]')?.addEventListener('click', () => handleUpdateStatus(order._id, 'Hoàn thành'));
+            container.querySelector('[data-action="cancel"]')?.addEventListener('click', () => handleUpdateStatus(order._id, 'Đã hủy'));
+            container.querySelector('[data-action="delete"]')?.addEventListener('click', () => handleDeleteOrder(order._id));
+            container.querySelector('[data-action="mark-paid"]')?.addEventListener('click', () => handleMarkAsPaid(order._id));
+            container.querySelector('[data-action="release-table"]')?.addEventListener('click', () => handleReleaseTable(order._id));
+        }
+
+        // === HÀM LOGIC CHÍNH CỦA TRANG ===
+        function runPageLogic() {
+            // 1. Kiểm tra Admin
+            if (!userInfo || userInfo.role !== 'admin') {
+                alert("Bạn không có quyền truy cập trang này.");
+                window.location.href = '/index.html';
+                return;
+            }
+
+            // 2. Cập nhật nút Đăng xuất VÀ BẬT CÁC NÚT MENU
+            const authButton = document.getElementById("authButton");
+            if (authButton) {
+                authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
+                authButton.addEventListener("click", () => {
+                    localStorage.clear();
+                    window.location.href = "/index.html";
+                });
+            }
+            
+            const navAdminDon = document.getElementById("nav-admin-link"); 
+            const navAdminBan = document.getElementById("nav-table-link"); 
+            const utilityDropdown = document.getElementById("utilityDropdown");
+
+            if (navAdminDon) navAdminDon.style.display = "inline-block";
+            if (navAdminBan) navAdminBan.style.display = "inline-block";
+            if (utilityDropdown) utilityDropdown.style.display = "inline-block";
+
+            // 3. Gắn sự kiện cho nút đóng Modal
+            document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+            document.getElementById('orderDetailModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('orderDetailModal')) closeModal();
+            });
+
+            // 4. Kết nối Socket.IO
+            try {
+                socket = io(); 
+                socket.on('connect', () => console.log('Admin (Bàn) đã kết nối Socket.IO'));
+                socket.on('new_order', () => loadDataAndRenderMap());
+                socket.on('order_updated', () => loadDataAndRenderMap());
+                socket.on('order_deleted', () => loadDataAndRenderMap());
+                socket.on('banUpdated', () => loadDataAndRenderMap()); 
+
+            } catch (err) { console.error("Lỗi kết nối Socket.IO:", err.message); }
+
+            // 5. Tải dữ liệu ban đầu
+            loadDataAndRenderMap();
+        }
+
+        // === INIT (TẢI NAVBAR VÀ CHẠY) ===
+        document.addEventListener('DOMContentLoaded', () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo"));
+            const navbarFile = '/admin-navbar.html';
+            
+            fetch(navbarFile)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('navbar-placeholder').innerHTML = data;
+                    runPageLogic(); // Chạy logic sau khi tải menu
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    runPageLogic(); // Vẫn chạy dù menu lỗi
+                });
+        });
+    </script>
+    <script src="/js/data.js"></script>
+</body>
+</html>

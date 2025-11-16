@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử đặt món</title>
+    <link rel="stylesheet" href="style.css"> 
+    
+    <style>
+        /* CSS Cũ của bạn (Đã xóa CSS của Progress Bar) */
+        body { background-color: #f4f4f4; margin: 0; }
+        .container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
+        h2 { text-align: center; color: #ff7043; margin-bottom: 2rem; }
+        .order-card { background: #fff; margin-bottom: 1.5rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .order-header { padding: 1rem 1.5rem; background: #fffaf7; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .order-body { padding: 1.5rem; }
+        .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .order-item:last-child { border-bottom: none; }
+        .order-footer { padding: 1rem 1.5rem; background: #f9f9f9; text-align: right; font-size: 1.2rem; font-weight: bold; }
+        
+        /* CSS cho Trạng thái (Giữ lại) */
+        .status { font-weight: bold; padding: 5px 10px; border-radius: 20px; font-size: 0.9rem; }
+        .status-completed { background-color: #e8f5e9; color: #4caf50; }
+        .status-cancelled { background-color: #ffebee; color: #f44336; }
+
+        /* CSS cho Trạng thái thanh toán (Giữ lại) */
+        .payment-status-paid { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="container">
+        <h2>Lịch sử Đặt món </h2>
+        <div id="order-list-container">
+            <p style="text-align: center;">Đang tải lịch sử đơn hàng...</p>
+        </div>
+    </main>
+    
+    <footer>
+        <p>© 2025 Quán Ăn Ngon 24h</p>
+    </footer>
+
+    <script>
+        let userInfo = null;
+
+        // Hàm tải Lịch sử (Đã lọc)
+        async function loadOrderHistory() {
+            const container = document.getElementById('order-list-container');
+            container.innerHTML = '<p style="text-align: center;">Đang tải lịch sử đơn hàng...</p>';
+            
+            const token = userInfo ? userInfo.token : null;
+            if (!token) { 
+                container.innerHTML = '<p style="text-align: center; color: red;">Bạn cần đăng nhập để xem lịch sử đặt món.</p>';
+                return; 
+            }
+            
+            try {
+                // Lấy userId (hỗ trợ nhiều key: userId hoặc _id)
+                const userId = userInfo ? (userInfo.userId || userInfo._id) : null;
+                if (!userId) { 
+                    throw new Error("Không tìm thấy thông tin userId. Vui lòng đăng nhập lại.");
+                }
+
+                const response = await fetch(`/api/donhang/my-orders?userId=${userId}`, { 
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                   const errData = await response.json();
+                   throw new Error(errData.message || 'Không thể tải lịch sử đơn hàng.');
+                }
+                
+                const allOrders = await response.json(); // Lấy tất cả
+
+                // *** BỘ LỌC QUAN TRỌNG ***
+                const finishedOrders = allOrders.filter(order => 
+                    order.status === 'Hoàn thành' || order.status === 'Đã hủy'
+                );
+                
+                if (!finishedOrders || finishedOrders.length === 0) {
+                    container.innerHTML = '<p style="text-align: center;">Bạn chưa có đơn hàng nào đã hoàn thành.</p>';
+                    return;
+                }
+                
+                container.innerHTML = ''; 
+                
+                finishedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                // Render
+                finishedOrders.forEach(order => {
+                    const orderCard = document.createElement('div');
+                    orderCard.className = 'order-card'; 
+                    
+                    let statusClass = (order.status === 'Hoàn thành') ? 'status-completed' : 'status-cancelled';
+                    let statusHtml = `<span class="status ${statusClass}">${order.status}</span>`;
+
+                    const itemsHtml = order.items.map(item => `
+                        <div class="order-item">
+                            <span class="item-name">${item.itemId ? item.itemId.name : 'Món không xác định'} (x${item.quantity})</span>
+                            <span class="item-price">${formatCurrency(item.itemId ? (item.itemId.gia || item.itemId.price || 0) * item.quantity : 0)}</span>
+                        </div>
+                    `).join('');
+                    
+                    orderCard.innerHTML = `
+                        <div class="order-header">
+                            <div>
+                                <strong>Mã đơn:</strong> ${order._id.substring(0, 10)}... <br>
+                                <strong>Ngày đặt:</strong> ${new Date(order.createdAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            ${statusHtml} 
+                        </div>
+                        <div class="order-body">
+                            ${itemsHtml}
+                        </div>
+                        <div class="order-footer">
+                            <span>Tổng cộng:</span>
+                            <span>${formatCurrency(order.totalPrice)}</span>
+                        </div>
+                    `;
+                    container.appendChild(orderCard);
+                });
+            } catch (err) {
+                console.error('Lỗi khi tải lịch sử:', err);
+                container.innerHTML = `<p style="text-align: center; color: red;">${err.message}</p>`;
+            }
+        }
+        
+        function formatCurrency(price) {
+            if (typeof price !== 'number') { price = 0; }
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+        }
+
+        // *** HÀM LOGIC CHÍNH (ĐẦY ĐỦ) ***
+        function runPageLogic() {
+            // 1. Tải lịch sử đơn hàng
+            loadOrderHistory(); 
+
+            // 2. Lấy các nút từ navbar
+            const authButton = document.getElementById("authButton");
+            const navOrderLink = document.getElementById("nav-order-link");
+            const navAdminLink = document.getElementById("nav-admin-link");
+            const utilityDropdown = document.getElementById("utilityDropdown");
+
+            // 3. Kiểm tra xem các nút có tồn tại không
+            if (authButton && navOrderLink && navAdminLink && utilityDropdown) { 
+                if (userInfo) {
+                    // Đã đăng nhập
+                    authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
+                    utilityDropdown.style.display = "inline-block"; // <-- BẬT TIỆN ÍCH
+                    
+                    if (userInfo.role === "admin") {
+                        navOrderLink.style.display = "none";
+                        navAdminLink.style.display = "inline-block";
+                    } else {
+                        navOrderLink.style.display = "inline-block"; // <-- BẬT ĐẶT MÓN
+                        navAdminLink.style.display = "none";
+                    }
+
+                    authButton.addEventListener("click", () => {
+                        localStorage.clear();
+                        window.location.href = "/index.html";
+                    });
+                } else {
+                    // Chưa đăng nhập (dù không mong muốn, nhưng vẫn xử lý)
+                    authButton.textContent = "Đăng nhập";
+                    utilityDropdown.style.display = "none";
+                    navOrderLink.style.display = "none";
+                    navAdminLink.style.display = "none";
+                    authButton.addEventListener("click", () => {
+                        window.location.href = "login.html";
+                    });
+                }
+            } else {
+                 console.error("Lỗi: Không tìm thấy các nút trong file navbar. Hãy kiểm tra ID: authButton, navOrderLink, navAdminLink, utilityDropdown");
+            }
+        }
+
+        // === INIT (ĐÃ CẬP NHẬT LOGIC TẢI NAVBAR) ===
+        document.addEventListener('DOMContentLoaded', () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo")); 
+
+            // *** LOGIC QUAN TRỌNG ĐỂ TẢI ĐÚNG MENU ***
+            let navbarFile = '/guest-navbar.html'; // 1. Mặc định là khách
+            
+            if (userInfo && userInfo.role === 'admin') {
+                navbarFile = '/admin-navbar.html'; // 2. Nếu là Admin
+            } else if (userInfo) {
+                // 3. Nếu là User đã đăng nhập (trường hợp của bạn)
+                navbarFile = '/user-navbar.html'; 
+            }
+            // ***************************************
+            
+            fetch(navbarFile)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+                    return response.text();
+                })
+                .then(data => {
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                    if (navbarPlaceholder) {
+                        navbarPlaceholder.innerHTML = data;
+                    }
+                    
+                    if (typeof runPageLogic === 'function') {
+                        runPageLogic(); 
+                    } else {
+                         console.error("Không tìm thấy hàm runPageLogic()!");
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    if (typeof runPageLogic === 'function') {
+                        runPageLogic(); 
+                    }
+                });
+        });
+    </script>
+    
+</body>
+</html>

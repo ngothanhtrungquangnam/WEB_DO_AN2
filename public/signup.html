@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký tài khoản</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🍜 Đăng ký tài khoản</h1>
+  </header>
+
+  <main class="login-container">
+    <form id="signupForm">
+      <label>Tên đăng nhập:</label>
+      <input type="text" id="signupUsername" required>
+
+      <label>Mật khẩu:</label>
+      <input type="password" id="signupPassword" required>
+
+      <label>Vai trò:</label>
+      <select id="signupRole">
+        <option value="user">Người dùng</option>
+        <option value="admin">Quản trị viên</option>
+      </select>
+
+      <button type="submit">Đăng ký</button>
+      <p>Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
+    </form>
+  </main>
+
+  <script>
+    document.getElementById("signupForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const username = document.getElementById("signupUsername").value.trim();
+      const password = document.getElementById("signupPassword").value.trim();
+      const role = document.getElementById("signupRole").value;
+
+      // Lấy danh sách tài khoản hiện có
+      let users = JSON.parse(localStorage.getItem("users")) || [];
+
+      // Kiểm tra trùng tên
+      if (users.find(u => u.username === username)) {
+        alert("Tên đăng nhập đã tồn tại!");
+        return;
+      }
+
+      // Thêm tài khoản mới
+      users.push({ username, password, role });
+      localStorage.setItem("users", JSON.stringify(users));
+
+      alert("Đăng ký thành công! Hãy đăng nhập.");
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>

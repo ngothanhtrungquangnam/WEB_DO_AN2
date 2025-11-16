@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quán Ăn Ngon 24h</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body>
+    <div id="toastMessage" class="toast"></div>
+    
+    <div id="navbar-placeholder"></div>
+
+    <section class="controls">
+        <input type="text" id="searchBox" placeholder="🔍 Tìm món ăn...">
+        <select id="categoryFilter">
+            <option value="all">Tất cả</option>
+            <option value="Món nước">Món nước</option>
+            <option value="Món khô">Món khô</option>
+            <option value="Nước uống">Nước uống</option>
+        </select>
+    </section>
+
+    <section class="menu">
+        <div id="menuContainer" class="menu-grid">
+                    </div>
+    </section>
+    
+    <section id="payment" class="section" style="display:none;">
+        <h2>💳 Thanh toán</h2>
+        <p>Chưa có thông tin thanh toán.</p>
+    </section>
+
+    <section id="profile" class="section" style="display:none;">
+        <h2>👤 Thông tin người dùng</h2>
+        <p>Đăng nhập để xem thông tin cá nhân của bạn.</p>
+    </section>
+
+    <footer>
+        <p>© 2025 Quán Ăn Ngon 24h</p>
+    </footer>
+
+        <script>
+        // === BIẾN GLOBAL ===
+        let userInfo = null; 
+
+        // === CÁC HÀM CŨ CỦA BẠN (GIỮ NGUYÊN) ===
+        function showSection(id) {
+            document.querySelectorAll('#history, #payment, #profile').forEach(sec => sec.style.display = 'none');
+            const activeSection = document.getElementById(id);
+            if (activeSection) {
+                activeSection.style.display = 'block';
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function runIndexPageLogic() {
+            const utilityDropdown = document.getElementById("utilityDropdown");
+            if (utilityDropdown) {
+                if (userInfo) {
+                    utilityDropdown.style.display = "inline-block";
+                } else {
+                    utilityDropdown.style.display = "none";
+                }
+            }
+
+            const authButton = document.getElementById("authButton");
+            const navOrderLink = document.getElementById("nav-order-link");
+            const navAdminLink = document.getElementById("nav-admin-link");
+
+            if (authButton && navOrderLink && navAdminLink) { 
+                if (userInfo) {
+                    authButton.textContent = "Đăng xuất";
+                    if (userInfo.role === "admin") {
+                        navOrderLink.style.display = "none";
+                        navAdminLink.style.display = "inline-block";
+                    } else {
+                        navOrderLink.style.display = "inline-block";
+                        navAdminLink.style.display = "none";
+                    }
+                    authButton.addEventListener("click", () => {
+                        localStorage.removeItem("userInfo");
+                        window.location.href = "/index.html";
+                    });
+                } else {
+                    authButton.textContent = "Đăng nhập";
+                    navOrderLink.style.display = "none";
+                    navAdminLink.style.display = "none";
+                    authButton.addEventListener("click", () => {
+                        window.location.href = "/login.html";
+                    });
+                }
+            } else {
+                console.error("Lỗi: Không tìm thấy các nút điều khiển header!");
+            }
+        }
+
+        // === CODE "LẮP RÁP" MỚI (GIỮ NGUYÊN) ===
+        document.addEventListener("DOMContentLoaded", () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo")); // Gán giá trị cho biến global
+
+            // Quyết định file navbar cần tải dựa trên vai trò
+            let navbarFile = '/user-navbar.html'; // Mặc định là user
+            if (userInfo && userInfo.role === 'admin') {
+                navbarFile = '/admin-navbar.html'; // Nếu là admin thì đổi file
+            }
+            
+            // Bắt đầu tải file navbar tương ứng
+            fetch(navbarFile)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+                    return response.text();
+                })
+                .then(data => {
+                    // 1. Lắp menu vào
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                    if (navbarPlaceholder) {
+                        navbarPlaceholder.innerHTML = data;
+                    } else {
+                        console.error("Không tìm thấy thẻ #navbar-placeholder!");
+                        return; 
+                    }
+                    
+                    // 2. Chạy logic của trang (hàm runIndexPageLogic đã có ở trên)
+                    if (typeof runIndexPageLogic === 'function') {
+                        runIndexPageLogic(); 
+                    } else {
+                         console.error("Không tìm thấy hàm runIndexPageLogic()!");
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                     if (navbarPlaceholder) {
+                         navbarPlaceholder.innerHTML = `<p style="color:red; text-align:center;">LỖI TẢI MENU (${error.message})</p>`;
+                     }
+                });
+        });
+    </script>
+
+        <script src="script.js" defer></script> 
+    <script src="data.js" defer></script> 
+    
+            <script src="/socket.io/socket.io.js"></script>
+        <script src="js/chatbox.js"></script>
+
+</body>
+</html>

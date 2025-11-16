@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kết Quả Thanh Toán</title>
+    <link rel="stylesheet" href="style.css"> <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .result-card {
+            background: #fff;
+            padding: 2.5rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            text-align: center;
+            width: 100%;
+            max-width: 450px;
+        }
+        .icon {
+            font-size: 4rem;
+            line-height: 1;
+            margin-bottom: 1rem;
+        }
+        .success { color: #4CAF50; } /* Màu xanh lá */
+        .error { color: #f44336; }   /* Màu đỏ */
+
+        .result-card h2 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .result-card p {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+        .order-id {
+            font-weight: bold;
+            color: #ff7043;
+            word-break: break-all;
+            font-size: 0.9rem;
+            background: #f4f4f4;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 2rem;
+        }
+        .btn {
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            width: 100%;
+            text-decoration: none;
+            display: inline-block;
+            box-sizing: border-box;
+            transition: background-color 0.2s;
+        }
+        .btn-success { background-color: #007bff; }
+        .btn-success:hover { background-color: #0056b3; }
+        .btn-error { background-color: #f44336; }
+        .btn-error:hover { background-color: #d32f2f; }
+    </style>
+</head>
+<body>
+
+    <div class="result-card" id="paymentResultCard">
+        <h2 class="loader">Đang tải kết quả...</h2>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const card = document.getElementById('paymentResultCard');
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Đọc các tham số từ URL
+            const orderId = urlParams.get('orderId');
+            const status = urlParams.get('status'); // 0 = thành công
+            const message = urlParams.get('message'); // "ThanhToanThanhCong"
+
+            if (orderId && (status === '0' || message === 'ThanhToanThanhCong')) {
+                // TRƯỜNG HỢP THÀNH CÔNG
+                card.innerHTML = `
+                    <div class="icon success">✓</div>
+                    <h2>Thanh toán thành công!</h2>
+                    <p>Đơn hàng của bạn đã được xác nhận thanh toán (Mô phỏng).</p>
+                    <div class="order-id">Mã đơn: ${orderId}</div>
+                    <a href="/order-progress.html" class="btn btn-success">Xem tiến trình đơn hàng</a>
+                `;
+            } else {
+                // TRƯỜNG HỢP THẤT BẠI (hoặc không có thông tin)
+                card.innerHTML = `
+                    <div class="icon error">✗</div>
+                    <h2>Thanh toán thất bại</h2>
+                    <p>Đã xảy ra lỗi trong quá trình xử lý thanh toán. Vui lòng thử lại.</p>
+                    <a href="/" class="btn btn-error">Về trang chủ</a>
+                `;
+            }
+        });
+    </script>
+
+</body>
+</html>

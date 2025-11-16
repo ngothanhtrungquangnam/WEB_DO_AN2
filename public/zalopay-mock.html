@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZaloPay Gateway - Mô phỏng</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        .header {
+            background-color: #008fe5;
+            color: white;
+            padding: 16px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .content {
+            padding: 24px;
+            text-align: center;
+        }
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 16px;
+            background-color: #eee;
+            border: 1px solid #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #888;
+        }
+        .info-title {
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .amount {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #000;
+            margin-bottom: 16px;
+        }
+        .order-info {
+            font-size: 0.9rem;
+            color: #777;
+            margin-bottom: 24px;
+            word-break: break-all;
+        }
+        .btn-mock-pay {
+            background-color: #4CAF50; /* Xanh lá */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .btn-mock-pay:hover {
+            background-color: #45a049;
+        }
+        .btn-mock-pay:disabled {
+            background-color: #ccc;
+        }
+        .loader {
+            font-size: 1rem;
+            color: #555;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="mockContainer">
+        <div class="card">
+            <div class="header">
+                ZaloPay Gateway (Mô Phỏng)
+            </div>
+            <div class="content">
+                <div class="qr-code" id="qrCode">
+                    
+                </div>
+                <div class="info-title">Số tiền thanh toán</div>
+                <h1 class="amount" id="amountDisplay">Đang tải...</h1>
+                <div class="order-info" id="orderIdDisplay">Đang tải...</div>
+                
+                <button class="btn-mock-pay" id="confirmPaymentBtn">
+                    Bấm để mô phỏng thanh toán thành công
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const amountDisplay = document.getElementById('amountDisplay');
+            const orderIdDisplay = document.getElementById('orderIdDisplay');
+            const confirmBtn = document.getElementById('confirmPaymentBtn');
+            const mockContainer = document.getElementById('mockContainer');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('orderId');
+            const amount = parseFloat(urlParams.get('amount'));
+
+            if (orderId && amount) {
+                // Hiển thị thông tin đơn hàng
+                amountDisplay.textContent = amount.toLocaleString('vi-VN') + ' VND';
+                orderIdDisplay.textContent = `Mã đơn hàng: ${orderId}`;
+
+                // Gắn sự kiện cho nút mô phỏng
+                confirmBtn.addEventListener('click', async () => {
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = 'Đang xử lý...';
+
+                    try {
+                        // Gọi API pay_direct để hoàn tất đơn
+                        const response = await fetch('/api/payment/pay_direct', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderId: orderId })
+                        });
+                        
+                        const result = await response.json();
+                        if (!response.ok) throw new Error(result.message);
+
+                        // Thanh toán thành công! Chuyển về trang kết quả cuối cùng
+                        // Lấy URL trang kết quả từ .env hoặc mặc định
+                        const finalRedirectUrl = new URLSearchParams(window.location.search).get('returnUrl') || '/payment-result.html';
+                        window.location.href = `${finalRedirectUrl}?orderId=${orderId}&status=0&message=ThanhToanThanhCong`;
+
+                    } catch (err) {
+                        mockContainer.innerHTML = `
+                            <div class="card" style="padding: 24px; text-align: center; background: #fff3f3; border: 1px solid #f00;">
+                                <h2>Mô phỏng thất bại</h2>
+                                <p>${err.message}</p>
+                                <p>Vui lòng thử lại hoặc quay về trang chủ.</p>
+                            </div>
+                        `;
+                    }
+                });
+            } else {
+                // Lỗi không có thông tin
+                mockContainer.innerHTML = `
+                    <div class="card" style="padding: 24px; text-align: center;">
+                        <h2>Lỗi Mô Phỏng</h2>
+                        <p>Không nhận được thông tin đơn hàng (orderId hoặc amount) để tạo giao diện giả lập.</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+
+</body>
+</html>

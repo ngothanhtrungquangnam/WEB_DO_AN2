@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang chủ Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS để tạo giao diện "Card" cho các link */
+        .admin-dashboard-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .admin-dashboard-container h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .admin-dashboard-container > p {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 2rem;
+        }
+        .dashboard-links {
+            display: grid;
+            /* Tự động chia cột, mỗi cột rộng tối thiểu 300px */
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .dashboard-card {
+            display: block;
+            padding: 1.5rem 2rem;
+            background-color: #ffffff;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        }
+        .dashboard-card h2 {
+            /* Lấy màu cam chính từ style.css của bạn */
+            color: var(--main-color, #f07c56); 
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        .dashboard-card p {
+            font-size: 0.95rem;
+            color: #444;
+            line-height: 1.5;
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="admin-dashboard-container">
+        <h1>Chào mừng Admin!</h1>
+        <p>Chọn một chức năng quản lý để bắt đầu:</p>
+        
+        <div class="dashboard-links">
+            
+            <a href="/admin.html" class="dashboard-card">
+                <h2>📋 Quản lý Đơn hàng</h2>
+                <p>Xem, cập nhật trạng thái và xử lý các đơn hàng mới.</p>
+            </a>
+            
+            <a href="/quan-ly-mon-an.html" class="dashboard-card">
+                <h2>🍴 Quản lý Món ăn</h2>
+                <p>Thêm, xóa, và sửa các món ăn trong thực đơn.</p>
+            </a>
+
+            </div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // Lấy thông tin user
+            const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+
+            // Bảo vệ trang: Nếu không phải admin, đá về trang đăng nhập
+            if (!userInfo || userInfo.role !== 'admin') {
+                alert('Bạn không có quyền truy cập. Vui lòng đăng nhập.');
+                window.location.href = '/login.html';
+                return; // Dừng thực thi code
+            }
+
+            // Tải file navbar của Admin
+            const navbarFile = '/admin-navbar.html'; 
+
+            fetch(navbarFile)
+                .then(response => {
+                    if (!response.ok) throw new Error('Không tìm thấy file admin-navbar.html');
+                    return response.text();
+                })
+                .then(data => {
+                    // 1. Gắn HTML của navbar vào "chỗ giữ"
+                    const placeholder = document.getElementById('navbar-placeholder');
+                    if (placeholder) {
+                        placeholder.innerHTML = data;
+                    }
+
+                    // 2. Kích hoạt nút "Đăng xuất" (RẤT QUAN TRỌNG)
+                    const authButton = document.getElementById('authButton');
+                    if (authButton) {
+                        authButton.textContent = 'Đăng xuất';
+                        authButton.addEventListener('click', () => {
+                            // Xóa thông tin đăng nhập
+                            localStorage.removeItem('userInfo');
+                            // Quay về trang chủ
+                            window.location.href = '/index.html'; 
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error('Lỗi tải navbar:', err);
+                    const placeholder = document.getElementById('navbar-placeholder');
+                    if (placeholder) {
+                        placeholder.innerHTML = '<p style="color:red; text-align:center;">Lỗi tải menu admin.</p>';
+                    }
+                });
+        });
+    </script>
+</body>
+</html>

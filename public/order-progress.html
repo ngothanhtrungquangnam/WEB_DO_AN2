@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiến trình đơn hàng</title>
+    <link rel="stylesheet" href="style.css"> 
+   <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* (Toàn bộ CSS của bạn cho progress-bar... giữ nguyên) */
+        body { background-color: #f4f4f4; margin: 0; }
+        .container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
+        h2 { text-align: center; color: #ff7043; margin-bottom: 2rem; }
+        .order-card { background: #fff; margin-bottom: 1.5rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .order-header { padding: 1rem 1.5rem; background: #fffaf7; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .order-body { padding: 1.5rem; }
+        .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .order-item:last-child { border-bottom: none; }
+        .order-footer { padding: 1rem 1.5rem; background: #f9f9f9; text-align: right; font-size: 1.2rem; font-weight: bold; }
+        .progress-bar { display: flex; padding-top: 15px; margin-top: 15px; border-top: 1px dashed #eee; }
+        .progress-step { flex: 1; text-align: center; position: relative; color: #aaa; font-size: 0.85rem; font-weight: 500; }
+        .progress-step .dot { width: 14px; height: 14px; background-color: #ddd; border-radius: 50%; display: inline-block; border: 2px solid #f4f4f4; position: relative; z-index: 2; }
+        .progress-step .step-label { margin-top: 5px; }
+        .progress-step::after { content: ''; position: absolute; top: 8px; left: 50%; width: 100%; height: 3px; background-color: #ddd; z-index: 1; }
+        .progress-step:last-child::after { display: none; }
+        .progress-step.active { color: #007bff; font-weight: bold; }
+        .progress-step.active .dot { background-color: #007bff; }
+        .progress-step.active::after { background-color: #007bff; }
+        .progress-step.completed { color: #4caf50; font-weight: bold; }
+        .progress-step.completed .dot { background-color: #4caf50; }
+        .progress-step.completed::after { background-color: #4caf50; }
+        .status-cancelled { color: #f44336; font-weight: bold; font-size: 1rem; text-align: center; padding: 15px 0; border-top: 1px dashed #eee; margin-top: 15px; }
+        .payment-status { font-size: 0.9rem; text-align: right; padding-bottom: 10px; }
+        .payment-status-paid { color: #28a745; font-weight: bold; }
+        .payment-status-unpaid { color: #fd7e14; font-weight: bold; }
+        .payment-status-pending { color: #007bff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="container">
+        <h2>Tiến trình Đơn hàng</h2>
+        <div id="order-list-container">
+            <p style="text-align: center;">Đang tải các đơn hàng đang xử lý...</p>
+        </div>
+    </main>
+    
+    <footer>
+        <p>© 2025 Quán Ăn Ngon 24h</p>
+    </footer>
+
+    <script>
+     let userInfo = null;
+        let socket = null; 
+
+        // Hàm vẽ thanh tiến trình
+        function renderProgressBar(status) {
+            const steps = ['Mới', 'Đang xử lý', 'Hoàn thành'];
+            let currentStepIndex = steps.indexOf(status);
+            if (status === 'Đã hủy') {
+                return `<div class="status-cancelled">❌ Đơn hàng đã bị hủy</div>`;
+            }
+            let html = '<div class="progress-bar">';
+            for (let i = 0; i < steps.length; i++) {
+                let stepClass = 'progress-step';
+                if (i <= currentStepIndex) {
+                    stepClass += (i === steps.length - 1) ? ' completed' : ' active';
+                }
+                html += `<div class="${stepClass}"><div class="dot"></div><div class="step-label">${steps[i]}</div></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        // Hàm vẽ trạng thái thanh toán
+        function renderPaymentStatus(order) {
+            if (order.trangThaiThanhToan === 'Đã thanh toán') {
+                return `<span class="payment-status-paid">(Đã thanh toán)</span>`;
+            }
+            if (order.phuongThucThanhToan === 'Tiền mặt') { 
+                return `<span class="payment-status-unpaid">(Chưa thanh toán)</span>`;
+            }
+            return `<span class="payment-status-pending">(Chờ thanh toán)</span>`;
+        }
+
+        // Hàm định dạng tiền
+        function formatCurrency(price) {
+            if (typeof price !== 'number') { price = 0; }
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+        }
+        
+        // Hàm showToast (nếu chưa có)
+        if (typeof globalShowToast !== 'function') {
+            window.showToast = function(message) {
+                alert(message); 
+            }
+        }
+
+        // HÀM TẢI CÁC ĐƠN HÀNG ĐANG XỬ LÝ
+        async function loadActiveOrders() {
+            const container = document.getElementById('order-list-container');
+            container.innerHTML = '<p style="text-align: center;">Đang tải các đơn hàng đang xử lý...</p>';
+            
+            const token = userInfo ? userInfo.token : null;
+            if (!token) { 
+                container.innerHTML = '<p style="text-align: center; color: red;">Bạn cần đăng nhập để xem.</p>';
+                return; 
+            }
+            
+            try {
+                const userId = userInfo ? (userInfo.userId || userInfo._id) : null;
+                if (!userId) { 
+                    throw new Error("Không tìm thấy thông tin userId. Vui lòng đăng nhập lại.");
+                }
+
+               const response = await fetch(`/api/donhang/my-active?userId=${userId}`, { 
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+                if (!response.ok) {
+                   const errData = await response.json();
+                   throw new Error(errData.message || 'Không thể tải lịch sử đơn hàng.');
+                }
+                
+                const allOrders = await response.json();
+
+                // *** BỘ LỌC ĐÚNG: CHỈ LẤY ĐƠN "MỚI" HOẶC "ĐANG XỬ LÝ" ***
+                const activeOrders = allOrders.filter(order => 
+                    order.status === 'Mới' || order.status === 'Đang xử lý'
+                );
+                
+                if (!activeOrders || activeOrders.length === 0) {
+                    container.innerHTML = '<p style="text-align: center;">Bạn không có đơn hàng nào đang được xử lý.</p>';
+                    return;
+                }
+                
+                container.innerHTML = ''; 
+                
+                activeOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                // Render
+                activeOrders.forEach(order => {
+                    const orderCard = document.createElement('div');
+                    orderCard.className = 'order-card'; 
+                    orderCard.id = `order-card-${order._id}`; 
+                    
+                    const paymentStatusHtml = renderPaymentStatus(order);
+                    const progressBarHtml = renderProgressBar(order.status); // Dùng thanh tiến trình
+
+                    const itemsHtml = order.items.map(item => `
+                        <div class="order-item">
+                            <span class="item-name">${item.itemId ? item.itemId.name : 'Món không xác định'} (x${item.quantity})</span>
+                            <span class="item-price">${formatCurrency(item.itemId ? (item.itemId.gia || item.itemId.price || 0) * item.quantity : 0)}</span>
+                        </div>
+                    `).join('');
+                    
+                    orderCard.innerHTML = `
+                        <div class="order-header">
+                            <div>
+                                <strong>Mã đơn:</strong> ${order._id.substring(0, 10)}... <br>
+                                <strong>Ngày đặt:</strong> ${new Date(order.createdAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                        </div>
+                        <div class="order-body">
+                            <div class="payment-status" id="payment-status-${order._id}">
+                                ${paymentStatusHtml}
+                            </div>
+                            ${itemsHtml}
+                            <div class="status-container" id="status-container-${order._id}">
+                                ${progressBarHtml}
+                            </div>
+                        </div>
+                        <div class="order-footer">
+                            <span>Tổng cộng:</span>
+                            <span>${formatCurrency(order.totalPrice)}</span>
+                        </div>
+                    `;
+                    container.appendChild(orderCard);
+                });
+            } catch (err) {
+                console.error('Lỗi khi tải tiến trình:', err);
+                container.innerHTML = `<p style="text-align: center; color: red;">${err.message}</p>`;
+            }
+        }
+
+        // *** HÀM LOGIC CHÍNH (ĐỂ BẬT TẮT MENU) ***
+        function runPageLogic() {
+            // 1. Tải các đơn hàng đang hoạt động
+            loadActiveOrders();
+
+            // 2. Lấy các nút từ navbar
+            const authButton = document.getElementById("authButton");
+            const navOrderLink = document.getElementById("nav-order-link");
+            const navAdminLink = document.getElementById("nav-admin-link");
+            const utilityDropdown = document.getElementById("utilityDropdown");
+
+            // 3. Kiểm tra xem các nút có tồn tại không
+            if (authButton && navOrderLink && navAdminLink && utilityDropdown) { 
+                if (userInfo) {
+                    // Đã đăng nhập
+                    authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
+                    utilityDropdown.style.display = "inline-block"; // <-- BẬT TIỆN ÍCH
+                    
+                    if (userInfo.role === "admin") {
+                        navOrderLink.style.display = "none";
+                        navAdminLink.style.display = "inline-block";
+                    } else {
+                        navOrderLink.style.display = "inline-block"; // <-- BẬT ĐẶT MÓN
+                        navAdminLink.style.display = "none";
+                    }
+                    authButton.addEventListener("click", () => {
+                        localStorage.clear(); 
+                        window.location.href = "/index.html";
+                    });
+                } else {
+                    // Chưa đăng nhập
+                    authButton.textContent = "Đăng nhập";
+                    utilityDropdown.style.display = "none";
+                    navOrderLink.style.display = "none";
+                    navAdminLink.style.display = "none";
+                    authButton.addEventListener("click", () => {
+                        window.location.href = "login.html";
+                    });
+                }
+            } else {
+                   console.error("Lỗi: Không tìm thấy các nút trong file navbar. Hãy kiểm tra ID.");
+            }
+            
+            // 4. KẾT NỐI SOCKET.IO ĐỂ LẮNG NGHE
+            try {
+                if (!socket) { 
+                    socket = io(); 
+                }
+                socket.on('connect', () => console.log('User đã kết nối Socket.IO'));
+
+                socket.on('order_updated', (updatedOrder) => {
+                    if (userInfo && updatedOrder.user && (userInfo.userId === updatedOrder.user._id || userInfo.userId === updatedOrder.user)) {
+                        
+                        showToast(`Đơn hàng #${updatedOrder._id.substring(0, 6)} đã đổi trạng thái thành "${updatedOrder.status}"`);
+
+                        if (updatedOrder.status === 'Hoàn thành' || updatedOrder.status === 'Đã hủy') {
+                            const cardToRemove = document.getElementById(`order-card-${updatedOrder._id}`);
+                            if (cardToRemove) cardToRemove.remove();
+                            
+                            if (document.querySelectorAll('.order-card').length === 0) {
+                                document.getElementById('order-list-container').innerHTML = '<p style="text-align: center;">Bạn không có đơn hàng nào đang được xử lý.</p>';
+                            }
+                        } else {
+                            const progressBarContainer = document.getElementById(`status-container-${updatedOrder._id}`);
+                            if (progressBarContainer) {
+                                progressBarContainer.innerHTML = renderProgressBar(updatedOrder.status);
+                            }
+                            const paymentStatusContainer = document.getElementById(`payment-status-${updatedOrder._id}`);
+                            if (paymentStatusContainer) {
+                                 paymentStatusContainer.innerHTML = renderPaymentStatus(updatedOrder);
+                            }
+                        }
+                    }
+                });
+            } catch(err) { 
+                console.error("Lỗi kết nối Socket.IO:", err.message); 
+            }
+        }
+
+        // *** HÀM INIT (TẢI NAVBAR CHUẨN) ***
+        document.addEventListener('DOMContentLoaded', () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo")); 
+
+            let navbarFile = '/guest-navbar.html'; // Mặc định
+            
+            if (userInfo && userInfo.role === 'admin') {
+                navbarFile = '/admin-navbar.html'; 
+            } else if (userInfo) {
+                navbarFile = '/user-navbar.html'; 
+            }
+            
+            fetch(navbarFile)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+                    return response.text();
+                })
+                .then(data => {
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                    if (navbarPlaceholder) {
+                        navbarPlaceholder.innerHTML = data;
+                    }
+                    runPageLogic(); 
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    runPageLogic(); // Vẫn chạy dù menu lỗi
+                });
+        });
+    </script>
+    
+</body>
+</html>
+  

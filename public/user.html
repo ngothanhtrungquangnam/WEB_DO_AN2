@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bảng điều khiển người dùng</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🍜 Xin chào, <span id="userName">User</span></h1>
+    <nav class="nav-links">
+      <button onclick="showSection('orders')">🛒 Lịch sử đặt món</button>
+      <button onclick="showSection('payment')">💳 Chuyển tiền</button>
+      <button onclick="showSection('profile')">👤 Thông tin cá nhân</button>
+      <button onclick="logout()">🚪 Đăng xuất</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="orders" class="section active">
+      <h2>Lịch sử đặt món</h2>
+      <div id="orderHistory"></div>
+    </section>
+
+    <section id="payment" class="section">
+      <h2>Thanh toán qua thẻ ngân hàng</h2>
+      <form id="paymentForm">
+        <input type="text" placeholder="Số thẻ ngân hàng" required><br>
+        <input type="text" placeholder="Tên chủ thẻ" required><br>
+        <input type="text" placeholder="Ngày hết hạn (MM/YY)" required><br>
+        <input type="password" placeholder="Mã CVV" required><br>
+        <button type="submit" class="btn">Xác nhận thanh toán</button>
+      </form>
+    </section>
+
+    <section id="profile" class="section">
+      <h2>Thông tin người dùng</h2>
+      <div id="userInfo"></div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+  <script>
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function logout() {
+      localStorage.removeItem('userInfo');
+      alert("Bạn đã đăng xuất!");
+      window.location.href = "login.html";
+    }
+
+    // Khi load trang
+    document.addEventListener("DOMContentLoaded", () => {
+      const user = JSON.parse(localStorage.getItem("userInfo"));
+      if (!user) return window.location.href = "login.html";
+      document.getElementById("userName").textContent = user.user.name;
+
+      // Lấy thông tin user & đơn hàng
+      fetch(`/api/user/${user.user._id}`)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("userInfo").innerHTML = `
+            <p><b>Tên:</b> ${data.name}</p>
+            <p><b>Email:</b> ${data.email}</p>
+            <p><b>Vai trò:</b> ${data.role}</p>`;
+        });
+
+      fetch(`/api/donhang/user/${user.user._id}`)
+        .then(res => res.json())
+        .then(orders => {
+          if (!orders.length) return document.getElementById("orderHistory").innerHTML = "<p>Chưa có đơn hàng nào.</p>";
+          document.getElementById("orderHistory").innerHTML = orders.map(o => `
+            <div class="order-card">
+              <p><b>Mã đơn:</b> ${o._id}</p>
+              <p><b>Tổng tiền:</b> ${o.tongTien.toLocaleString('vi-VN')} VND</p>
+              <p><b>Trạng thái:</b> ${o.trangThai}</p>
+            </div>
+          `).join('');
+        });
+    });
+  </script>
+</body>
+</html>

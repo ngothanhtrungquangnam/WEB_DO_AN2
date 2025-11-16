@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Giỏ Hàng - Quản Lý Quán Ăn</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        .cart-summary .cart-input { box-sizing: border-box; width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.95rem; font-family: inherit; }
+        textarea.cart-input { min-height: 60px; resize: vertical; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #fff; border-radius: 10px; padding: 1.5rem 2rem; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .modal-close { position: absolute; top: 8px; right: 15px; font-size: 2.2rem; font-weight: bold; cursor: pointer; color: #888; line-height: 1; }
+        .modal-content h2 { text-align: center; color: #ff7043; margin-bottom: 1rem; }
+        .legend { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .legend-color { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ccc; }
+        .legend-trong { background-color: #e8f5e9; border-color: #4caf50; }
+        .legend-daphucvu { background-color: #fff3e0; border-color: #ff9800; }
+        .table-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem; margin-top: 1rem; max-height: 60vh; overflow-y: auto; padding: 5px; }
+        .table-item { border: 2px solid; border-radius: 8px; padding: 1.5rem 0.5rem; text-align: center; font-weight: bold; cursor: pointer; transition: all 0.2s ease; position: relative; }
+        .table-item.status-trong { border-color: #66bb6a; color: #388e3c; background: #e8f5e9; }
+        .table-item.status-trong:hover { background: #c8e6c9; transform: scale(1.05); }
+        .table-item.status-dang-phuc-vu { border-color: #ffa726; color: #f57c00; background: #fff3e0; cursor: not-allowed; opacity: 0.7; }
+        .guest-count { position: absolute; top: 5px; right: 5px; background-color: rgba(0, 0, 0, 0.6); color: white; font-size: 0.75rem; padding: 2px 5px; border-radius: 50%; min-width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; }
+        .table-selector { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; }
+        .table-selector input { flex-grow: 1; }
+        .btn-chon-ban { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9rem; white-space: nowrap; transition: background-color 0.2s ease; }
+        .btn-chon-ban:hover { background-color: #0056b3; }
+
+        .payment-method-section {
+            margin-top: 15px;
+            margin-bottom: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .modal-content .payment-method-section { border-top: none; padding-top: 0; }
+        .payment-method-option { display: flex; align-items: center; gap: 12px; border: 1px solid #ddd; padding: 12px; border-radius: 8px; cursor: pointer; transition: background-color 0.15s; user-select: none; }
+        .payment-method-option:hover { background-color: #f9f9f9; }
+        .payment-method-option input[type="radio"] { margin: 0; transform: scale(1.2); position: relative; z-index: 5; cursor: pointer; }
+        .payment-method-option div { width: 100%; cursor: pointer; }
+        #paymentModal .modal-content { z-index: 1010; position: relative; }
+
+        footer { text-align: center; padding: 20px; margin-top: 20px; background-color: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <div id="navbar-placeholder"></div>
+
+    <main class="order-page-container">
+        <div class="cart-wrapper">
+            <section class="cart-section">
+                <h2>🛒 Giỏ hàng của bạn</h2>
+                <div id="cartContainer" class="cart-items"></div>
+                <div class="cart-summary">
+                    <p id="cartTotal">Tổng cộng: 0 VND</p>
+
+                    <input type="text" id="customerNameInput" class="cart-input" placeholder="Nhập tên khách hàng..." required>
+
+                    <div class="table-selector">
+                        <input type="text" id="selectedTableDisplay" class="cart-input" placeholder="Chưa chọn bàn" readonly style="cursor: pointer; background-color: #e9ecef;">
+                        <button type="button" id="btnChonBan" class="btn-chon-ban">Chọn bàn</button>
+                    </div>
+                    <small id="banError" style="color: red; display: none; text-align: left; margin-bottom: 10px;">Vui lòng chọn bàn.</small>
+
+                    <textarea id="notesInput" class="cart-input" placeholder="Nhập ghi chú..."></textarea>
+
+                    <div class="table-selector">
+                         <input type="text" id="selectedPaymentDisplay" class="cart-input" placeholder="Chưa chọn phương thức" readonly
+                            style="cursor: pointer; background-color: #e9ecef;"
+                            value="Thanh toán tại quầy">
+                         <button type="button" id="btnChonThanhToan" class="btn-chon-ban">Chọn</button>
+                    </div>
+                    <small id="paymentError" style="color: red; display: none; text-align: left; margin-bottom: 10px;">Vui lòng chọn phương thức thanh toán.</small>
+                    <button id="btnOrder" class="btn-order" style="margin-top: 10px;">Gửi đơn hàng</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="tableModal" class="modal-overlay">
+        <div class="modal-content">
+            <span id="closeModal" class="modal-close">&times;</span>
+            <h2>Chọn bàn</h2>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color legend-trong"></div><span>Trống</span></div>
+                <div class="legend-item"><div class="legend-color legend-daphucvu"></div><span>Đang phục vụ</span></div>
+            </div>
+            <div id="tableMapContainer" class="table-map">
+                <p>Đang tải sơ đồ bàn...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="paymentModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <span id="closePaymentModal" class="modal-close">&times;</span>
+            <h2>Chọn phương thức thanh toán</h2>
+
+            <div class="payment-method-section">
+                <label class="payment-method-option" for="pay-cod" id="label-cod">
+                    <input type="radio" id="pay-cod" name="paymentMethodModal" value="cod" checked>
+                    <div style="flex:1;">
+                        <strong>Thanh toán tại quầy</strong>
+                        <small>Gửi đơn cho bếp và thanh toán sau</small>
+                    </div>
+                </label>
+
+                <label class="payment-method-option" for="pay-zalopay" id="label-zalopay" style="margin-top: 15px;">
+                    <input type="radio" id="pay-zalopay" name="paymentMethodModal" value="zalopay">
+                    <div style="flex:1;">
+                        <strong>Thanh toán Online ngay (ZaloPay)</strong>
+                        <small>Thanh toán ngay bằng ZaloPay</small>
+                    </div>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 Quán Ăn Ngon 24h</p>
+    </footer>
+
+    <script src="script.js" defer></script>
+
+    <script>
+        // === BIẾN GLOBAL ===
+        let selectedBanId = null;
+        let userInfo = null;
+        let selectedPaymentMethod = 'cod'; // mặc định cod
+
+        // === HỖ TRỢ LẤY userId AN TOÀN ===
+        function getStoredUserId() {
+            if (!userInfo) return null;
+            return userInfo.userId || userInfo.id || userInfo._id || null;
+        }
+
+        // === CÁC HÀM CŨ ===
+        function removeCartItem(index) {
+            let cart = JSON.parse(localStorage.getItem("clientCart")) || [];
+            cart.splice(index, 1);
+            localStorage.setItem("clientCart", JSON.stringify(cart));
+            location.reload();
+        }
+        function showToast(message) {
+            if (typeof globalShowToast === 'function') {
+                globalShowToast(message);
+            } else {
+                alert(message);
+            }
+        }
+        function openTableModal() {
+            document.getElementById('tableModal').style.display = 'flex';
+            loadTableMap();
+        }
+        function closeTableModal() {
+            document.getElementById('tableModal').style.display = 'none';
+        }
+        async function loadTableMap() {
+            const mapContainer = document.getElementById('tableMapContainer');
+            mapContainer.innerHTML = '<p>Đang tải sơ đồ bàn...</p>';
+            try {
+                const response = await fetch('/api/ban');
+                if (!response.ok) throw new Error('Không thể tải sơ đồ bàn');
+                const banList = await response.json();
+                mapContainer.innerHTML = '';
+                banList.forEach(ban => {
+                    const tableDiv = document.createElement('div');
+                    tableDiv.className = 'table-item';
+                    tableDiv.id = `ban-${ban._id}`;
+                    tableDiv.dataset.id = ban._id;
+                    tableDiv.textContent = ban.soBan;
+                    if (ban.trangThai === 'Trống') {
+                        tableDiv.classList.add('status-trong');
+                        tableDiv.addEventListener('click', () => selectBan(ban._id, ban.soBan));
+                    } else {
+                        tableDiv.classList.add('status-dang-phuc-vu');
+                        if (ban.soKhach > 0) {
+                            const guestSpan = document.createElement('span');
+                            guestSpan.className = 'guest-count';
+                            guestSpan.textContent = ban.soKhach;
+                            tableDiv.appendChild(guestSpan);
+                        }
+                    }
+                    mapContainer.appendChild(tableDiv);
+                });
+            } catch (err) {
+                console.error(err);
+                mapContainer.innerHTML = `<p style="color:red;">${err.message}</p>`;
+            }
+        }
+        function selectBan(banId, soBan) {
+            selectedBanId = banId;
+            document.getElementById('selectedTableDisplay').value = soBan;
+            document.getElementById('banError').style.display = 'none';
+            closeTableModal();
+        }
+
+        // === Modal thanh toán ===
+        function openPaymentModal() {
+            document.getElementById('paymentModal').style.display = 'flex';
+        }
+        function closePaymentModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+        }
+        function selectPayment(method, text) {
+            selectedPaymentMethod = method;
+            document.getElementById('selectedPaymentDisplay').value = text;
+            document.getElementById('paymentError').style.display = 'none';
+
+            // cập nhật radio checked
+            const radioCod = document.getElementById('pay-cod');
+            const radioZalo = document.getElementById('pay-zalopay');
+            if (radioCod) radioCod.checked = (method === 'cod');
+            if (radioZalo) radioZalo.checked = (method === 'zalopay');
+
+            closePaymentModal();
+        }
+
+        function addPaymentModalListeners() {
+            const btnChonThanhToan = document.getElementById('btnChonThanhToan');
+            const paymentModal = document.getElementById('paymentModal');
+            const closePaymentModalBtn = document.getElementById('closePaymentModal');
+            const selectedPaymentInput = document.getElementById('selectedPaymentDisplay');
+
+            if(btnChonThanhToan) btnChonThanhToan.addEventListener('click', openPaymentModal);
+            if(selectedPaymentInput) selectedPaymentInput.addEventListener('click', openPaymentModal);
+            if(closePaymentModalBtn) closePaymentModalBtn.addEventListener('click', closePaymentModal);
+            if(paymentModal) paymentModal.addEventListener('click', (e) => { if (e.target === paymentModal) closePaymentModal(); });
+
+            const labelCod = document.getElementById('label-cod');
+            const labelZalo = document.getElementById('label-zalopay');
+            const inputCod = document.getElementById('pay-cod');
+            const inputZalo = document.getElementById('pay-zalopay');
+
+            if (labelCod) {
+                labelCod.addEventListener('click', () => {
+                    setTimeout(() => selectPayment('cod', 'Thanh toán tại quầy'), 10);
+                });
+            }
+            if (labelZalo) {
+                labelZalo.addEventListener('click', () => {
+                    setTimeout(() => selectPayment('zalopay', 'Thanh toán Online (ZaloPay)'), 10);
+                });
+            }
+
+            if (inputCod) {
+                inputCod.addEventListener('change', () => { if (inputCod.checked) selectPayment('cod', 'Thanh toán tại quầy'); });
+            }
+            if (inputZalo) {
+                inputZalo.addEventListener('change', () => { if (inputZalo.checked) selectPayment('zalopay', 'Thanh toán Online (ZaloPay)'); });
+            }
+        }
+
+        // === Hàm chính ===
+        function runPageLogic() {
+            const cartContainer = document.getElementById("cartContainer");
+            const cartTotal = document.getElementById("cartTotal");
+            const btnOrder = document.getElementById("btnOrder");
+            const btnChonBan = document.getElementById('btnChonBan');
+            const closeModalBtn = document.getElementById('closeModal');
+            const modalOverlay = document.getElementById('tableModal');
+            const selectedTableInput = document.getElementById('selectedTableDisplay');
+
+            const authButton = document.getElementById("authButton");
+            const utilityDropdown = document.getElementById("utilityDropdown");
+            const navOrderLink = document.getElementById("nav-order-link");
+            const navAdminLink = document.getElementById("nav-admin-link");
+
+            addPaymentModalListeners();
+
+            if(btnChonBan) btnChonBan.addEventListener('click', openTableModal);
+            if(selectedTableInput) selectedTableInput.addEventListener('click', openTableModal);
+            if(closeModalBtn) closeModalBtn.addEventListener('click', closeTableModal);
+            if(modalOverlay) modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeTableModal(); });
+
+            const cart = JSON.parse(localStorage.getItem("clientCart")) || [];
+
+            // xử lý menu
+            if (authButton && navOrderLink && navAdminLink) {
+                if (userInfo) {
+                    authButton.textContent = "Đăng xuất";
+                    if (utilityDropdown) utilityDropdown.style.display = "inline-block";
+                    if (userInfo.role === "admin") {
+                        navOrderLink.style.display = "none";
+                        navAdminLink.style.display = "inline-block";
+                    } else {
+                        navOrderLink.style.display = "inline-block";
+                        navAdminLink.style.display = "none";
+                    }
+                    authButton.addEventListener("click", () => { localStorage.clear(); window.location.href = "index.html"; });
+                } else {
+                    authButton.textContent = "Đăng nhập";
+                    if (utilityDropdown) utilityDropdown.style.display = "none";
+                    navOrderLink.style.display = "none";
+                    navAdminLink.style.display = "none";
+                    authButton.addEventListener("click", () => { window.location.href = "login.html"; });
+                }
+            } else {
+                console.error("Lỗi: Không tìm thấy các nút header trong runPageLogic.");
+            }
+
+            // hiển thị giỏ
+            let total = 0;
+            if (cart.length === 0) {
+                cartContainer.innerHTML = "<p>🛍️ Giỏ hàng trống!</p>";
+                cartTotal.textContent = "Tổng cộng: 0 VND";
+                if (btnOrder) btnOrder.disabled = true;
+            } else {
+                cartContainer.innerHTML = "";
+                cart.forEach((item, index) => {
+                    const itemPrice = item.gia || item.price || 0;
+                    const itemTotal = itemPrice * item.quantity;
+                    total += itemTotal;
+                    const div = document.createElement("div");
+                    div.className = "cart-item";
+                    div.innerHTML = `
+                        <img src="${item.image}" alt="${item.name}" class="cart-img">
+                        <div class="cart-info"><h3>${item.name}</h3><p>${itemPrice.toLocaleString("vi-VN")}đ x ${item.quantity}</p></div>
+                        <div class="cart-actions"><span>${itemTotal.toLocaleString("vi-VN")}đ</span><button class="btn-remove" onclick="removeCartItem(${index})">Xóa</button></div>
+                    `;
+                    cartContainer.appendChild(div);
+                });
+                cartTotal.textContent = `Tổng cộng: ${total.toLocaleString("vi-VN")} VND`;
+            }
+
+            // nút gửi đơn
+            if (btnOrder) {
+                btnOrder.addEventListener("click", async () => {
+                    if (!userInfo || !userInfo.token) { showToast('Bạn cần đăng nhập để gửi đơn hàng!'); return; }
+                    if (cart.length === 0) { showToast('Giỏ hàng của bạn đang trống!'); return; }
+
+                    const customerName = document.getElementById("customerNameInput").value;
+                    const notes = document.getElementById("notesInput").value;
+                    const banId = selectedBanId;
+                    const banError = document.getElementById('banError');
+                    const paymentError = document.getElementById('paymentError');
+
+                    const paymentMethod = selectedPaymentMethod;
+
+                    let isValid = true;
+                    if (!customerName) { showToast('Vui lòng nhập tên khách hàng!'); isValid = false; }
+                    if (!banId) { showToast('Vui lòng chọn bàn!'); if(banError) banError.style.display = 'block'; isValid = false; }
+                    else { if(banError) banError.style.display = 'none'; }
+                    if (!paymentMethod) { showToast('Vui lòng chọn phương thức thanh toán!'); if(paymentError) paymentError.style.display = 'block'; isValid = false; }
+                    else { if(paymentError) paymentError.style.display = 'none'; }
+                    if(!isValid) return;
+
+                    const orderItems = cart.map(item => ({ itemId: item.id || item._id, quantity: item.quantity }));
+                    const orderData = {
+                        userId: getStoredUserId(),
+                        customerName,
+                        notes,
+                        banId,
+                        items: orderItems,
+                        paymentMethod: paymentMethod,
+                        totalPrice: total
+                    };
+
+                    try {
+                        btnOrder.disabled = true; btnOrder.textContent = "Đang gửi...";
+
+                        // 1) Tạo DonHang
+                        const apiEndpoint = window.location.origin + '/api/donhang/create';
+                        const response = await fetch(apiEndpoint, {
+  method: 'POST',
+  headers: { 
+      'Content-Type': 'application/json', 
+      'Authorization': `Bearer ${userInfo.token}` 
+  },
+  body: JSON.stringify(orderData) 
+});
+
+const createOrderResult = await response.json();
+
+if (!response.ok) {
+  // nếu backend trả lỗi khi tạo đơn
+  throw new Error(createOrderResult.message || 'Lỗi khi tạo đơn hàng');
+}
+
+// Nếu là COD -> như cũ
+if (paymentMethod === 'cod') {
+  showToast("✅ Đơn hàng (COD) đã được gửi thành công!");
+  localStorage.removeItem("clientCart");
+  window.location.href = '/order-progress.html';
+  return;
+}
+
+// Nếu là ZaloPay -> gọi API tạo link
+if (paymentMethod === 'zalopay') {
+  // gọi route mới để tạo link ZaloPay
+  const payResp = await fetch(window.location.origin + '/api/payment/zalopay/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userInfo.token}`
+    },
+    body: JSON.stringify({ orderId: createOrderResult.donHang._id, amount: createOrderResult.donHang.totalPrice })
+  });
+
+  const payJson = await payResp.json();
+  if (!payResp.ok) {
+    throw new Error(payJson.message || payJson.error || 'Lỗi tạo link thanh toán');
+  }
+
+  // redirect tới ZaloPay
+  if (payJson.paymentUrl) {
+    showToast('Đi tới cổng thanh toán ZaloPay...');
+    localStorage.removeItem("clientCart");
+    window.location.href = payJson.paymentUrl;
+    return;
+  } else {
+    throw new Error('Không nhận được paymentUrl từ server');
+  }
+}
+
+
+                    } catch (err) {
+                        console.error('Lỗi khi gửi đơn hàng:', err);
+                        showToast(err.message || 'Lỗi kết nối đến server!');
+                    } finally {
+                        btnOrder.disabled = false; btnOrder.textContent = "Gửi đơn hàng";
+                    }
+                });
+            }
+        }
+
+        // === INIT ===
+        document.addEventListener('DOMContentLoaded', () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo"));
+
+            let navbarFile = '/user-navbar.html';
+            if (userInfo && userInfo.role === 'admin') {
+                navbarFile = '/admin-navbar.html';
+            }
+
+            fetch(navbarFile)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+                    return response.text();
+                })
+                .then(data => {
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                    if (navbarPlaceholder) {
+                        navbarPlaceholder.innerHTML = data;
+                    } else {
+                        console.error("Không tìm thấy thẻ #navbar-placeholder!");
+                        return;
+                    }
+
+                    if (typeof runPageLogic === 'function') {
+                        runPageLogic();
+                    } else {
+                        console.error("Không tìm thấy hàm runPageLogic()!");
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                    if (navbarPlaceholder) {
+                        navbarPlaceholder.innerHTML = `<p style="color:red; text-align:center;">LỖI TẢI MENU (${error.message})</p>`;
+                    }
+                });
+        });
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+<script src="js/chatbox.js"></script>
+
+</body>
+</html>

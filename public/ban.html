@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chọn Bàn - Quán Ăn Ngon 24h</title>
+    <link rel="stylesheet" href="style.css"> 
+    
+    <style>
+        body { background-color: #f8f9fa; margin: 0; }
+        .container { max-width: 960px; margin: 2rem auto; padding: 1rem; }
+        h2 { text-align: center; color: #ff7043; margin-bottom: 2rem; }
+        .legend { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; font-size: 0.9rem; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .legend-color { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ccc; }
+        .legend-trong { background-color: #e8f5e9; border-color: #4caf50; }
+        .legend-daphucvu { background-color: #fff3e0; border-color: #ff9800; }
+        .table-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 1.5rem; background-color: #fff; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.07); }
+        .table-item { border: 2px solid; border-radius: 8px; padding: 1.5rem 0.5rem; text-align: center; font-weight: bold; cursor: pointer; transition: all 0.2s ease-in-out; position: relative; }
+        .table-item.status-trong { border-color: #66bb6a; color: #388e3c; background: #e8f5e9; }
+        .table-item.status-trong:hover { background: #c8e6c9; transform: translateY(-3px) scale(1.03); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
+        .table-item.status-dang-phuc-vu { border-color: #ffa726; color: #f57c00; background: #fff3e0; cursor: not-allowed; opacity: 0.8; }
+        .guest-count { position: absolute; top: 5px; right: 5px; background-color: rgba(0, 0, 0, 0.6); color: white; font-size: 0.75rem; padding: 2px 5px; border-radius: 50%; min-width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; }
+        footer { 
+            text-align: center; 
+            padding: 20px; 
+            margin-top: 20px; 
+            background-color: #f4f4f4; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="container">
+        <h2>Chọn Bàn</h2>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color legend-trong"></div>
+                <span>Trống</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color legend-daphucvu"></div>
+                <span>Đang phục vụ</span>
+            </div>
+        </div>
+        <div id="tableMapContainer" class="table-map">
+            <p style="grid-column: 1 / -1; text-align: center;">Đang tải sơ đồ bàn...</p>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 Quán Ăn Ngon 24h</p>
+    </footer>
+
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script src="script.js" defer></script> 
+    
+    <script>
+        // === BIẾN GLOBAL (GIỮ NGUYÊN) ===
+        let userInfo = null;
+        let mapContainer = null; 
+        const socket = io(); 
+
+        // === CÁC HÀM CŨ CỦA BẠN (GIỮ NGUYÊN) ===
+        function renderTableMap(banList) {
+            // (Code giữ nguyên)
+            if (!mapContainer) return;
+            mapContainer.innerHTML = ''; 
+            banList.forEach(ban => {
+                const tableDiv = document.createElement('div');
+                tableDiv.className = 'table-item';
+                tableDiv.id = `ban-${ban._id}`; 
+                tableDiv.dataset.id = ban._id; 
+                const match = ban.soBan.match(/\d+$/);
+                const tableNumberText = match ? `Bàn ${match[0]}` : ban.soBan;
+                tableDiv.textContent = tableNumberText;
+                if (ban.trangThai === 'Trống') {
+                    tableDiv.classList.add('status-trong');
+                    tableDiv.addEventListener('click', () => selectTable(ban._id, ban.soBan));
+                } else {
+                    tableDiv.classList.add('status-dang-phuc-vu');
+                    if (ban.soKhach > 0) {
+                        const guestSpan = document.createElement('span');
+                        guestSpan.className = 'guest-count';
+                        guestSpan.textContent = ban.soKhach;
+                        tableDiv.appendChild(guestSpan);
+                    }
+                }
+                mapContainer.appendChild(tableDiv);
+            });
+        }
+
+        function selectTable(banId, soBan) {
+            // (Code giữ nguyên)
+            localStorage.setItem('selectedBanId', banId);
+            localStorage.setItem('selectedSoBan', soBan);
+            window.location.href = '/order.html'; 
+        }
+
+        async function loadInitialTableMap() {
+            // (Code giữ nguyên)
+            if (!mapContainer) return; 
+            try {
+                const response = await fetch('/api/ban'); 
+                if (!response.ok) throw new Error('Không thể tải sơ đồ bàn');
+                const banList = await response.json();
+                renderTableMap(banList); 
+            } catch (err) {
+                console.error(err);
+                if (mapContainer) {
+                     mapContainer.innerHTML = `<p style="grid-column: 1 / -1; text-align: center; color:red;">${err.message}</p>`;
+                }
+            }
+        }
+        
+        function updateTableFromSocket(updatedBanData) {
+            // (Code giữ nguyên)
+            const tableElement = document.getElementById(`ban-${updatedBanData._id}`);
+            if (tableElement) {
+                tableElement.classList.remove('status-trong', 'status-dang-phuc-vu');
+                const oldGuestCount = tableElement.querySelector('.guest-count');
+                if (oldGuestCount) oldGuestCount.remove();
+                const newTableElement = tableElement.cloneNode(true); 
+                tableElement.parentNode.replaceChild(newTableElement, tableElement); 
+                if (updatedBanData.trangThai === 'Trống') {
+                    newTableElement.classList.add('status-trong');
+                    newTableElement.addEventListener('click', () => selectTable(updatedBanData._id, updatedBanData.soBan));
+                } else {
+                    newTableElement.classList.add('status-dang-phuc-vu');
+                    if (updatedBanData.soKhach > 0) {
+                        const guestSpan = document.createElement('span');
+                        guestSpan.className = 'guest-count';
+                        guestSpan.textContent = updatedBanData.soKhach;
+                        newTableElement.appendChild(guestSpan);
+                    }
+                }
+                const match = updatedBanData.soBan.match(/\d+$/);
+                const tableNumberText = match ? `Bàn ${match[0]}` : updatedBanData.soBan;
+                if (newTableElement.firstChild && newTableElement.firstChild.nodeType === Node.TEXT_NODE) {
+                     newTableElement.firstChild.textContent = tableNumberText;
+                } else { 
+                     const textNode = document.createTextNode(tableNumberText);
+                     newTableElement.insertBefore(textNode, newTableElement.firstChild);
+                }
+            }
+        }
+
+        function updateGuestCountFromSocket(updatedBanData) {
+            // (Code giữ nguyên)
+             const tableElement = document.getElementById(`ban-${updatedBanData._id}`);
+             if (tableElement) {
+                 let guestSpan = tableElement.querySelector('.guest-count');
+                 if (updatedBanData.soKhach > 0) {
+                     if (!guestSpan) { 
+                         guestSpan = document.createElement('span');
+                         guestSpan.className = 'guest-count';
+                         tableElement.appendChild(guestSpan);
+                     }
+                     guestSpan.textContent = updatedBanData.soKhach; 
+                 } else {
+                     if (guestSpan) guestSpan.remove(); 
+                 }
+             }
+         }
+
+        // === HÀM CHỨA LOGIC CŨ CỦA BẠN (GIỮ NGUYÊN) ===
+        function runPageLogic() {
+            // (Code này giống hệt code cũ trong DOMContentLoaded của bạn)
+            mapContainer = document.getElementById('tableMapContainer');
+            loadInitialTableMap();
+
+            socket.off('banUpdated'); 
+            socket.on('banUpdated', updateTableFromSocket);
+            socket.off('banGuestUpdated'); 
+            socket.on('banGuestUpdated', updateGuestCountFromSocket);
+            
+            // --- Code logic cho Header (Giữ nguyên) ---
+            const authButton = document.getElementById("authButton");
+            const navOrderLink = document.getElementById("nav-order-link");
+            const navAdminLink = document.getElementById("nav-admin-link");
+            const utilityDropdown = document.getElementById("utilityDropdown");
+
+            if (authButton && navOrderLink && navAdminLink) { 
+                if (userInfo) {
+                    authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
+                    authButton.style.width = 'auto'; 
+                    authButton.style.padding = '8px 16px';
+                    if(utilityDropdown) utilityDropdown.style.display = "inline-block";
+                    if (userInfo.role === "admin") {
+                        if(navOrderLink) navOrderLink.style.display = "none";
+                        if(navAdminLink) navAdminLink.style.display = "inline-block";
+                    } else {
+                        if(navOrderLink) navOrderLink.style.display = "inline-block";
+                        if(navAdminLink) navAdminLink.style.display = "none";
+                    }
+                    authButton.addEventListener("click", () => {
+                        localStorage.removeItem("userInfo");
+                        localStorage.removeItem("clientCart"); 
+                        window.location.href = "/index.html";
+                    });
+                } else {
+                    authButton.textContent = "Đăng nhập";
+                    if(utilityDropdown) utilityDropdown.style.display = "none";
+                    if(navOrderLink) navOrderLink.style.display = "none";
+                    if(navAdminLink) navAdminLink.style.display = "none";
+                    authButton.addEventListener("click", () => {
+                        window.location.href = "login.html";
+                    });
+                }
+            } else {
+                 console.error("Lỗi: Không tìm thấy các nút header trong runPageLogic.");
+            }
+        }
+        // === KẾT THÚC HÀM LOGIC CŨ ===
+
+
+        // ***** BƯỚC 2: CODE "LẮP RÁP" MỚI (ĐÃ THAY THẾ CODE CŨ) *****
+        document.addEventListener('DOMContentLoaded', () => {
+            // Lấy userInfo trước
+            userInfo = JSON.parse(localStorage.getItem("userInfo")); // Gán giá trị cho biến global
+
+            // Quyết định file navbar cần tải dựa trên vai trò
+            let navbarFile = '/user-navbar.html'; // Mặc định là user
+            if (userInfo && userInfo.role === 'admin') {
+                navbarFile = '/admin-navbar.html'; // Nếu là admin thì đổi file
+            }
+            
+            // Bắt đầu tải file navbar tương ứng
+            fetch(navbarFile)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+                    return response.text();
+                })
+                .then(data => {
+                    // 1. Lắp menu vào
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                    if (navbarPlaceholder) {
+                        navbarPlaceholder.innerHTML = data;
+                    } else {
+                        console.error("Không tìm thấy thẻ #navbar-placeholder!");
+                        return; 
+                    }
+                    
+                    // 2. Chạy logic của trang (hàm runPageLogic đã có ở trên)
+                    if (typeof runPageLogic === 'function') {
+                        runPageLogic(); 
+                    } else {
+                         console.error("Không tìm thấy hàm runPageLogic()!");
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                     if (navbarPlaceholder) {
+                         navbarPlaceholder.innerHTML = `<p style="color:red; text-align:center;">LỖI TẢI MENU (${error.message})</p>`;
+                     }
+                });
+        });
+    </script>
+</body>
+</html>

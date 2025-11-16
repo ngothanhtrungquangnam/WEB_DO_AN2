@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quản lý đơn hàng</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <style>
+        .actions-cell { white-space: nowrap; text-align: center; }
+        .btn-action { padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin: 2px; color: white; transition: opacity 0.2s ease; }
+        .btn-action:hover { opacity: 0.85; }
+        .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-process { background-color: #007bff; }
+        .btn-complete { background-color: #28a745; }
+        .btn-cancel { background-color: #dc3545; }
+        .admin-page { max-width: 1200px; margin: 2rem auto; padding: 1rem; }
+        .admin-page h2 { text-align: center; color: #333; margin-bottom: 2rem; font-weight: 600; }
+        .admin-page table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; font-size: 0.9rem; }
+        .admin-page thead th { background-color: #f8f9fa; padding: 12px 10px; text-align: left; font-weight: 600; color: #333; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
+        .admin-page tbody td { padding: 10px 10px; border-bottom: 1px solid #eee; vertical-align: top; color: #555; line-height: 1.5; }
+        .admin-page th:nth-child(2), .admin-page td:nth-child(2),
+        .admin-page th:nth-child(7), .admin-page td:nth-child(7),
+        .admin-page th:nth-child(8), .admin-page td:nth-child(8),
+        .admin-page th:nth-child(9), .admin-page td:nth-child(9) { text-align: center; vertical-align: middle; }
+        .admin-page th:nth-child(6), .admin-page td:nth-child(6) { text-align: right; font-weight: 500; white-space: nowrap; }
+        .admin-page td:nth-child(4) div { margin-bottom: 3px; }
+        .admin-page tbody tr:last-child td { border-bottom: none; }
+        .admin-page tbody tr:hover { background-color: #f1f1f1; }
+        
+        /* Cần thêm CSS cho Trạng thái thanh toán để đẹp hơn (Tôi sẽ giữ màu cũ của bạn) */
+    </style>
+    
+    <script>
+    function showSection(id) {
+        document.querySelectorAll('#history, #payment, #profile').forEach(sec => sec.style.display = 'none');
+        const activeSection = document.getElementById(id);
+        if (activeSection) {
+            activeSection.style.display = 'block';
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    </script>
+</head>
+
+<body>
+    <div id="navbar-placeholder"></div>
+
+    <main class="admin-page">
+        <h2>📋 Danh sách đơn hàng</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Thời gian</th> <th>Bàn số</th> <th>Tên khách</th> <th>Món ăn (SL)</th> <th>Ghi chú</th> <th>Tổng tiền</th> <th>Thanh toán</th> <th>Trạng thái</th> </tr>
+            </thead>
+            <tbody id="orderTableBody">
+                <tr><td colspan="8" style="text-align: center;">Đang tải dữ liệu...</td></tr>
+            </tbody>
+        </table>
+    </main>
+
+    <footer>© 2025 Quán Ăn Ngon 24h</footer>
+
+   <script>
+    // === BIẾN GLOBAL ===
+    let userInfo = null;
+    let tableBody = null; 
+    // Biến currentTargetSocketId không cần ở đây nữa, chatbox.js tự giữ.
+
+    // === CÁC HÀM XỬ LÝ NÚT (GIỮ NGUYÊN) ===
+    function showToast(message) {
+        if (typeof globalShowToast === 'function') { globalShowToast(message); }
+        else { alert(message); }
+    }
+
+    // === HÀM TẢI DỮ LIỆU CHÍNH (GIỮ NGUYÊN) ===
+    async function loadOrders() {
+         tableBody.innerHTML = "<tr><td colspan='8' style='text-align: center;'>Đang tải...</td></tr>";
+         const token = userInfo?.token; 
+         if (!token) return; 
+         try {
+             const res = await fetch(`${window.location.origin}/api/donhang`, { headers: { Authorization: `Bearer ${token}` }, });
+             if (!res.ok) { 
+                 const errorText = await res.text();
+                 if (errorText.includes('API Endpoint')) { 
+                     tableBody.innerHTML = `<tr><td colspan='8' style='color:red; text-align: center;'>${errorText}</td></tr>`;
+                     return;
+                 }
+                 const d = JSON.parse(errorText);
+                 throw new Error(d.message || "Lỗi tải đơn"); 
+             }
+             const orders = await res.json();
+             if (!Array.isArray(orders)) throw new Error("Lỗi dữ liệu server!");
+             tableBody.innerHTML = "";
+             if (orders.length === 0) {
+                 tableBody.innerHTML = "<tr><td colspan='8' style='text-align: center;'>Chưa có đơn hàng nào.</td></tr>";
+                 return;
+             }
+             orders.sort((a, b) => {
+                 const statusOrder = { 'Mới': 0, 'Đang xử lý': 1, 'Hoàn thành': 2, 'Đã hủy': 3 };
+                 const statusA = statusOrder[a.status] !== undefined ? statusOrder[a.status] : 99;
+                 const statusB = statusOrder[b.status] !== undefined ? statusOrder[b.status] : 99;
+                 if (statusA !== statusB) return statusA - statusB;
+                 return new Date(b.createdAt) - new Date(a.createdAt);
+             });
+             orders.forEach((order) => {
+                 const row = tableBody.insertRow();
+                 const time = new Date(order.createdAt).toLocaleString("vi-VN",{ day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                 row.insertCell().textContent = time;
+                 row.insertCell().textContent = order.banId?.soBan || "-";
+                 row.insertCell().textContent = order.customerName || "-";
+                 const itemsCell = row.insertCell();
+                 itemsCell.style.minWidth = '200px';
+                 if (order.items && order.items.length > 0) { itemsCell.innerHTML = order.items.map(i => `<div>- ${i.itemId ? (i.itemId.name || '?') : '?'} (x${i.quantity})</div>`).join(''); }
+                 else { itemsCell.textContent = '-'; }
+                 row.insertCell().textContent = order.notes || "-";
+                 const totalCell = row.insertCell();
+                 totalCell.textContent = (typeof order.totalPrice === 'number') ? order.totalPrice.toLocaleString('vi-VN') + 'đ' : '-';
+                 totalCell.style.textAlign = 'right';
+                 const paymentCell = row.insertCell();
+                 paymentCell.textContent = order.trangThaiThanhToan || 'Chưa thanh toán';
+                 if(order.trangThaiThanhToan === 'Đã thanh toán') {
+                    paymentCell.style.color = 'green';
+                    paymentCell.style.fontWeight = 'bold';
+                 } else {
+                    paymentCell.style.color = 'orange';
+                 }
+                 paymentCell.style.textAlign = 'center';
+                 row.insertCell().textContent = order.status || "-";
+             });
+             } catch (err) {
+                 console.error("Lỗi khi tải đơn hàng:", err);
+                 tableBody.innerHTML = `<tr><td colspan='8' style='color:red; text-align: center;'>LỖI TẢI DỮ LIỆU: ${err.message}</td></tr>`;
+             }
+        }
+        
+        // === HÀM LOGIC CHÍNH (ĐÃ DỌN DẸP LỖI SOCKET) ===
+        function runPageLogic() {
+            tableBody = document.getElementById("orderTableBody");
+
+            // --- KIỂM TRA ĐĂNG NHẬP & QUYỀN ADMIN (GIỮ NGUYÊN) ---
+            userInfo = JSON.parse(localStorage.getItem("userInfo"));
+            if (!userInfo || userInfo.role !== "admin") {
+                alert(userInfo ? "Bạn không có quyền truy cập!" : "Vui lòng đăng nhập!");
+                window.location.href = userInfo ? "/index.html" : "/login.html";
+                return;
+            }
+
+            // --- LOGIC HEADER (GIỮ NGUYÊN) ---
+            const authButton = document.getElementById("authButton");
+            const navOrderLink = document.getElementById("nav-order-link");
+            const navAdminLink = document.getElementById("nav-admin-link");
+            const utilityDropdown = document.getElementById("utilityDropdown");
+
+            if (userInfo) { 
+                authButton.textContent = `Đăng xuất (${userInfo.username})`;
+                authButton.style.width = 'auto'; 
+                authButton.style.padding = '8px 16px';
+                if(utilityDropdown) utilityDropdown.style.display = "inline-block";
+                if(navOrderLink) navOrderLink.style.display = "none";
+                if(navAdminLink) navAdminLink.style.display = "inline-block";
+                authButton.addEventListener("click", () => {
+                   localStorage.removeItem("userInfo");
+                    localStorage.removeItem("clientCart"); 
+                    window.location.href = "/index.html";
+                });
+            }
+            
+            // --- LOGIC SOCKET CHO ĐƠN HÀNG (SỬ DỤNG CHATBOX SOCKET) ---
+            // Cơ chế kiểm tra liên tục cho đến khi socket sẵn sàng
+            function setupOrderSocket() {
+                const socket = window.chatSocket; // Lấy socket được tạo từ chatbox.js
+
+                if (socket && socket.connected) {
+                    console.log("admin.html: Đã tìm thấy socket, đang lắng nghe đơn hàng.");
+                    socket.on('new_order', (newOrder) => { console.log('Admin nhận đơn mới:', newOrder); loadOrders(); });
+                    socket.on('order_updated', (updatedOrder) => { console.log('Admin nhận cập nhật đơn:', updatedOrder); loadOrders(); });
+                    socket.on('order_deleted', (data) => { console.log('Admin nhận thông báo xóa đơn:', data.orderId); loadOrders(); });
+                } else {
+                    // Nếu chưa, thử lại sau 200ms
+                    setTimeout(setupOrderSocket, 200);
+                }
+            }
+            setupOrderSocket(); // Bắt đầu lắng nghe
+            
+            loadOrders(); // Tải đơn hàng lần đầu
+        }
+
+        // === CÁC CODE KHỞI ĐỘNG (GIỮ NGUYÊN) ===
+        document.addEventListener('DOMContentLoaded', () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo"));
+            
+            let navbarFile = '/user-navbar.html';
+            if (userInfo && userInfo.role === 'admin') {
+                navbarFile = '/admin-navbar.html';
+            }
+            
+            fetch(navbarFile)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+                    return response.text();
+                })
+                .then(data => {
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                    if (navbarPlaceholder) {
+                        navbarPlaceholder.innerHTML = data;
+                    } else {
+                        console.error("Không tìm thấy thẻ #navbar-placeholder!");
+                        return; 
+                    }
+                    
+                    if (typeof runPageLogic === 'function') {
+                        runPageLogic(); 
+                    } else {
+                      console.error("Không tìm thấy hàm runPageLogic()!");
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                     if (navbarPlaceholder) {
+                         navbarPlaceholder.innerHTML = `<p style="color:red; text-align:center;">LỖI TẢI MENU (${error.message})</p>`;
+                     }
+                });
+        });
+    </script>
+
+        <script src="/js/chatbox.js"></script>
+
+</body>
+</html>

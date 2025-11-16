@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý món ăn</title>
+    <link rel="stylesheet" href="style.css"> 
+    <style>
+        /* CSS cũ của bạn (Giữ nguyên) */
+        .admin-container { padding: 20px; max-width: 1000px; margin: auto; }
+        #add-mon-an-form { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9; }
+        #add-mon-an-form input, #add-mon-an-form button { display: block; width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 10px; font-size: 1rem; }
+        .mon-an-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .mon-an-item { border: 1px solid #ddd; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .mon-an-item img { width: 100%; height: 150px; object-fit: cover; border-radius: 3px; }
+        .mon-an-item h4 { margin: 10px 0 5px 0; }
+        .mon-an-item p { margin: 5px 0; }
+        .delete-btn { background-color: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; width: 100%; }
+        .delete-btn:hover { background-color: #c93030; }
+
+        /* === 1. CSS CHO NÚT MỚI === */
+       /* === 1. DÁN CSS CHO NÚT MỚI VÀO ĐÂY === */
+.btn-back {
+    display: inline-block;
+    padding: 0.75rem 1.25rem;
+    
+    /* === SỬA MÀU SẮC === */
+    background-color: #f07c56; /* Màu cam (giống nút Thêm) */
+    color: #ffffff; /* Màu chữ trắng */
+    border: none; /* Bỏ viền xám */
+    /* =================== */
+
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+.btn-back:hover {
+    /* Sửa màu khi di chuột */
+    background-color: #e65c00; /* Màu cam đậm hơn */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+    </style>
+</head>
+<body>
+
+    <div style="max-width: 1400px; margin: 2rem auto 0; padding: 0 2rem;">
+        <a href="/admin.html" class="btn-back">
+            &larr; Quay lại 
+        </a>
+    </div>
+    <div class="admin-page-container" style="margin-top: 1.5rem;">
+    
+    <div class="admin-card form-container">
+    <h2>Thêm món ăn mới</h2>
+    
+    <form id="add-mon-an-form">
+        
+        <input type="hidden" id="mon-id">
+        
+        <div class="form-group">
+            <label for="mon-name">Tên món ăn</label>
+            <input type="text" id="mon-name" placeholder="Vd: Bún Bò Huế" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="mon-price">Giá (VND)</label>
+            <input type="number" id="mon-price" placeholder="Vd: 55000" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="mon-image">URL hình ảnh</label>
+            <input type="text" id="mon-image" placeholder="https://..." required>
+        </div>
+
+        <div class="form-group">
+            <label for="mon-category">Loại món ăn</label>
+            <input type="text" id="mon-category" placeholder="Vd: Món Nước" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Thêm món</button>
+        
+        <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="display:none;">Hủy</button>
+    </form>
+</div>
+
+    <div class="admin-card list-container">
+        <h2>Danh sách món ăn</h2>
+        
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hình ảnh</th>
+                        <th>Tên món ăn</th>
+                        <th>Giá</th>
+                        <th>Loại</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="mon-an-list-container">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+    <script src="js/quan-ly-mon-an.js"></script> 
+</body>
+</html>

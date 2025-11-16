@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Ký - Quán Ăn Ngon 24h</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            background: var(--bg-color); 
+        }
+        .register-container { 
+            background: var(--card-bg); 
+            padding: 2.5rem; 
+            border-radius: var(--radius); 
+            box-shadow: var(--shadow); 
+            width: 100%; 
+            max-width: 400px; 
+            text-align: center;
+        }
+        .register-container h2 { 
+            color: var(--main-color); 
+            margin-bottom: 1.5rem; 
+            font-weight: 600; 
+            font-family: "Poppins", sans-serif;
+        }
+        .register-container input { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 1rem; 
+            border-radius: 8px; 
+            border: 1px solid var(--border-color); 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            font-size: 1rem; 
+        }
+        .register-container label { 
+            display: block; 
+            text-align: left; 
+            margin-bottom: 0.5rem; 
+            font-weight: 500; 
+            color: var(--text-color);
+        }
+        .register-container .btn { 
+            width: 100%; 
+            margin-top: 1rem;
+        }
+        .error-message {
+             color: #e74c3c; 
+             margin-top: 1rem; 
+             display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h2>Đăng Ký Tài Khoản</h2>
+        <form id="registerForm">
+            <div>
+                <label for="username">Tên đăng nhập:</label>
+                <input type="text" id="username" required>
+            </div>
+            <div>
+                <label for="password">Mật khẩu:</label>
+                <input type="password" id="password" required>
+            </div>
+            
+            <button type="submit" class="btn">Đăng Ký</button>
+            <p style="margin-top: 1.5rem; color: var(--secondary-text-color);">
+                Đã có tài khoản? <a href="/login.html" style="color: var(--main-color);">Đăng nhập</a>
+            </p>
+        </form>
+        <div id="registerError" class="error-message"></div>
+    </div>
+
+    <script>
+        const registerForm = document.getElementById("registerForm");
+        const registerError = document.getElementById("registerError");
+
+        registerForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            registerError.style.display = "none";
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+            
+            // ĐÃ XÓA DÒNG CODE LẤY "role"
+
+            if (!username || !password) {
+                registerError.textContent = "Vui lòng nhập đủ thông tin.";
+                registerError.style.display = "block";
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    // ĐÃ XÓA "role" KHỎI BODY GỬI ĐI
+                    body: JSON.stringify({ username, password }) 
+                });
+
+                const data = await response.json();
+
+                if (response.ok || response.status === 201) {
+                    // Đăng ký thành công, tự động đăng nhập
+                    localStorage.setItem('userInfo', JSON.stringify(data)); 
+                    alert("Đăng ký thành công! Bạn đã tự động đăng nhập.");
+                    window.location.href = "/"; // Chuyển về trang chủ
+                } else {
+                    registerError.textContent = data.message || "Đăng ký thất bại.";
+                    registerError.style.display = "block";
+                }
+            } catch (error) {
+                console.error("Register error:", error);
+                registerError.textContent = "Không thể kết nối tới máy chủ.";
+                registerError.style.display = "block";
+            }
+        });
+    </script>
+</body>
+</html>

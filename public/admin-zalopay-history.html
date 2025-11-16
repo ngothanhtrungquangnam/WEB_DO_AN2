@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử Giao dịch ZaloPay</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* (CSS chung) */
+        body { background-color: #f4f4f4; margin: 0; }
+        .container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
+        .admin-header {
+            text-align: center; color: #333; font-size: 2rem;
+            margin-bottom: 2rem; display: flex; align-items: center;
+            justify-content: center; gap: 10px;
+        }
+        
+        /* === CSS MỚI: GIAO DIỆN LỊCH SỬ GIAO DỊCH THỰC TẾ === */
+        .transaction-list {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        
+        .transaction-card {
+            display: flex;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        .transaction-card:last-child {
+            border-bottom: none;
+        }
+        
+        .transaction-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e8f5e9; /* Màu xanh lá nhạt */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+            color: #4CAF50; /* Màu xanh lá đậm */
+            font-size: 1.2rem;
+        }
+        
+        .transaction-details {
+            flex-grow: 1;
+        }
+        .transaction-details .customer-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 1rem;
+            margin-bottom: 3px;
+        }
+        .transaction-details .time {
+            font-size: 0.85rem;
+            color: #777;
+        }
+        
+        .transaction-amount {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #4CAF50; /* Màu tiền vào */
+        }
+        
+        .no-transactions {
+            text-align: center;
+            padding: 3rem;
+            color: #888;
+        }
+        /* ================================ */
+
+    </style>
+</head>
+<body>
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="container">
+        <h2 class="admin-header">
+            Lịch sử Giao dịch ZaloPay
+        </h2>
+        
+        <div class="transaction-list" id="transactionListContainer">
+            <div class="no-transactions" id="loadingTransactions">
+                Đang tải lịch sử giao dịch...
+            </div>
+            </div>
+        
+    </main>
+
+    <footer style="text-align: center; padding: 20px; margin-top: 20px;">
+        <p>© 2025 Quán Ăn Ngon 24h</p>
+    </footer>
+
+    <script>
+        let userInfo = null;
+        let socket = null;
+
+        // === HÀM RENDER MỚI (VẼ GIAO DIỆN THỰC TẾ) ===
+       function renderTransactionList(orders) {
+            const container = document.getElementById('transactionListContainer');
+            if (!orders || orders.length === 0) {
+                container.innerHTML = '<div class="no-transactions">Không có giao dịch ZaloPay nào.</div>';
+                return;
+            }
+            
+            container.innerHTML = ''; // Xóa chữ "Đang tải"
+            
+            orders.forEach(order => {
+                const card = document.createElement('div');
+                card.className = 'transaction-card'; 
+                card.id = `order-${order._id}`; 
+                
+                const time = new Date(order.createdAt).toLocaleString('vi-VN', { 
+                    hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' 
+                });
+                const customer = order.customerName || (order.user ? order.user.username : 'N/A');
+                const total = (order.totalPrice || 0).toLocaleString('vi-VN') + ' VNĐ';
+
+                // === LOGIC MỚI: Hiển thị STK và Ngân hàng ===
+                let bankInfo = '';
+                if (order.paymentBank && order.paymentAccountNo) {
+                    // Ẩn bớt số tài khoản cho "thật"
+                    const shortAccountNo = '...' + order.paymentAccountNo.slice(-4);
+                    bankInfo = `<div class="time">${order.paymentBank} - ${shortAccountNo}</div>`;
+                } else {
+                    // Nếu không có thông tin (giao dịch cũ) thì hiển thị thời gian
+                    bankInfo = `<div class="time">${time}</div>`;
+                }
+                // ======================================
+                
+                card.innerHTML = `
+                    <div class="transaction-icon">
+                        <span>+</span>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="customer-name">Thanh toán từ: ${customer}</div>
+                        ${bankInfo} </div>
+                    <div class="transaction-amount">
+                        +${total}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // HÀM TẢI ĐƠN HÀNG (GỌI API CŨ)
+        async function loadZaloPayHistory() {
+            const container = document.getElementById('transactionListContainer');
+            const token = userInfo?.token;
+            if (!token) return;
+
+            try {
+                const res = await fetch(`${window.location.origin}/api/donhang/zalopay-history`, { 
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (!res.ok) { 
+                   const err = await res.json();
+                   throw new Error(err.message || "Lỗi tải giao dịch"); 
+                }
+                
+                const orders = await res.json();
+                renderTransactionList(orders); // Gọi hàm render mới
+
+            } catch (err) {
+                console.error("Lỗi khi tải lịch sử ZaloPay:", err);
+                container.innerHTML = `<div class="no-transactions" style="color: red;">LỖI TẢI DỮ LIỆU: ${err.message}</div>`;
+            }
+        }
+
+        // === HÀM LOGIC CHÍNH CỦA TRANG ===
+        function runPageLogic() {
+            // 1. Kiểm tra Admin
+            if (!userInfo || userInfo.role !== "admin") {
+                alert(userInfo ? "Bạn không có quyền truy cập!" : "Vui lòng đăng nhập!");
+                window.location.href = userInfo ? "/index.html" : "/login.html";
+                return;
+            }
+
+            // 2. Xử lý logic Header (Bật nút)
+            const authButton = document.getElementById("authButton");
+            const navAdminDon = document.getElementById("nav-admin-link"); 
+            const navAdminBan = document.getElementById("nav-table-link"); 
+            const utilityDropdown = document.getElementById("utilityDropdown");
+
+            if (authButton) {
+                authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
+                authButton.addEventListener("click", () => {
+                    localStorage.clear();
+                    window.location.href = "/index.html";
+                });
+            }
+            if (navAdminDon) navAdminDon.style.display = "inline-block";
+            if (navAdminBan) navAdminBan.style.display = "inline-block";
+            if (utilityDropdown) utilityDropdown.style.display = "inline-block";
+            
+            // 3. Kết nối Socket.IO
+            try {
+                socket = io(); 
+                socket.on('connect', () => console.log('Admin (ZaloPay) đã kết nối Socket.IO'));
+                
+                socket.on('order_updated', (updatedOrder) => {
+                    if(updatedOrder.phuongThucThanhToan === 'ZaloPay' && updatedOrder.trangThaiThanhToan === 'Đã thanh toán') {
+                        loadZaloPayHistory(); // Tải lại khi có giao dịch mới
+                    }
+                });
+                
+            } catch (err) { console.error("Lỗi kết nối Socket.IO:", err.message); }
+
+            // 4. Tải danh sách giao dịch ban đầu
+            loadZaloPayHistory();
+        }
+        
+        // === INIT (TẢI NAVBAR VÀ CHẠY) ===
+        document.addEventListener('DOMContentLoaded', () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo"));
+            const navbarFile = '/admin-navbar.html';
+            
+            fetch(navbarFile)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('navbar-placeholder').innerHTML = data;
+                    runPageLogic(); 
+                })
+                .catch(error => {
+                    console.error('Lỗi tải menu:', error);
+                    runPageLogic();
+                });
+        });
+    </script>
+</body>
+</html>

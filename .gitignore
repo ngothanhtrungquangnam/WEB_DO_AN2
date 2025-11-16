@@ -1,0 +1,16 @@
+# Dependency files (Node.js)
+/node_modules
+
+# Environment variables
+.env
+.env.development
+.env.production
+
+# DIALOGFLOW API KEY (Tuyệt đối KHÔNG được push lên GitHub)
+dialogflow-key.json
+
+# Log files
+*.log
+
+# Windows thumbnail files
+Thumbs.db
