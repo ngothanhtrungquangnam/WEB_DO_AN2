@@ -49,11 +49,34 @@
 
     <main class="admin-page">
         <h2>📋 Danh sách đơn hàng</h2>
+        <div style="background: #e3f2fd; padding: 15px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #90caf9; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin: 0 0 5px 0; color: #0d47a1;">🏦 Cấu hình Ngân hàng</h3>
+                <p style="margin: 0; font-size: 0.95rem;">Đang dùng: <span id="currentBankStatus" style="font-weight: bold; color: green;">Mặc định (Chính)</span></p>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button onclick="switchBank('MAIN')" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    ✅ Dùng MB Bank
+                </button>
+                <button onclick="switchBank('BACKUP')" style="padding: 10px 15px; background: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                    ⚠️ Dùng BIDV (Dự phòng)
+                </button>
+            </div>
+        </div>
         <table>
             <thead>
-                <tr>
-                    <th>Thời gian</th> <th>Bàn số</th> <th>Tên khách</th> <th>Món ăn (SL)</th> <th>Ghi chú</th> <th>Tổng tiền</th> <th>Thanh toán</th> <th>Trạng thái</th> </tr>
-            </thead>
+    <tr>
+        <th>Thời gian</th> 
+        <th>Bàn số</th> 
+        <th>Tên khách</th> 
+        <th>Món ăn (SL)</th> 
+        <th>Ghi chú</th> 
+        <th>Tổng tiền</th> 
+        <th>Thanh toán</th> 
+        <th>Trạng thái</th> 
+        <th>Hành động</th> </tr>
+</thead>
             <tbody id="orderTableBody">
                 <tr><td colspan="8" style="text-align: center;">Đang tải dữ liệu...</td></tr>
             </tbody>
@@ -72,69 +95,231 @@
     function showToast(message) {
         if (typeof globalShowToast === 'function') { globalShowToast(message); }
         else { alert(message); }
-    }
+    }// --- HÀM XỬ LÝ NÚT BẤM ---
+async function switchBank(type) {
+        if(!confirm(`Bạn chắc chắn muốn chuyển sang dùng tài khoản ${type === 'MAIN' ? 'Chính (MB)' : 'Dự phòng (BIDV)'}?`)) return;
 
-    // === HÀM TẢI DỮ LIỆU CHÍNH (GIỮ NGUYÊN) ===
-    async function loadOrders() {
-         tableBody.innerHTML = "<tr><td colspan='8' style='text-align: center;'>Đang tải...</td></tr>";
-         const token = userInfo?.token; 
-         if (!token) return; 
-         try {
-             const res = await fetch(`${window.location.origin}/api/donhang`, { headers: { Authorization: `Bearer ${token}` }, });
-             if (!res.ok) { 
-                 const errorText = await res.text();
-                 if (errorText.includes('API Endpoint')) { 
-                     tableBody.innerHTML = `<tr><td colspan='8' style='color:red; text-align: center;'>${errorText}</td></tr>`;
-                     return;
-                 }
-                 const d = JSON.parse(errorText);
-                 throw new Error(d.message || "Lỗi tải đơn"); 
-             }
-             const orders = await res.json();
-             if (!Array.isArray(orders)) throw new Error("Lỗi dữ liệu server!");
-             tableBody.innerHTML = "";
-             if (orders.length === 0) {
-                 tableBody.innerHTML = "<tr><td colspan='8' style='text-align: center;'>Chưa có đơn hàng nào.</td></tr>";
-                 return;
-             }
-             orders.sort((a, b) => {
-                 const statusOrder = { 'Mới': 0, 'Đang xử lý': 1, 'Hoàn thành': 2, 'Đã hủy': 3 };
-                 const statusA = statusOrder[a.status] !== undefined ? statusOrder[a.status] : 99;
-                 const statusB = statusOrder[b.status] !== undefined ? statusOrder[b.status] : 99;
-                 if (statusA !== statusB) return statusA - statusB;
-                 return new Date(b.createdAt) - new Date(a.createdAt);
-             });
-             orders.forEach((order) => {
-                 const row = tableBody.insertRow();
-                 const time = new Date(order.createdAt).toLocaleString("vi-VN",{ day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                 row.insertCell().textContent = time;
-                 row.insertCell().textContent = order.banId?.soBan || "-";
-                 row.insertCell().textContent = order.customerName || "-";
-                 const itemsCell = row.insertCell();
-                 itemsCell.style.minWidth = '200px';
-                 if (order.items && order.items.length > 0) { itemsCell.innerHTML = order.items.map(i => `<div>- ${i.itemId ? (i.itemId.name || '?') : '?'} (x${i.quantity})</div>`).join(''); }
-                 else { itemsCell.textContent = '-'; }
-                 row.insertCell().textContent = order.notes || "-";
-                 const totalCell = row.insertCell();
-                 totalCell.textContent = (typeof order.totalPrice === 'number') ? order.totalPrice.toLocaleString('vi-VN') + 'đ' : '-';
-                 totalCell.style.textAlign = 'right';
-                 const paymentCell = row.insertCell();
-                 paymentCell.textContent = order.trangThaiThanhToan || 'Chưa thanh toán';
-                 if(order.trangThaiThanhToan === 'Đã thanh toán') {
-                    paymentCell.style.color = 'green';
-                    paymentCell.style.fontWeight = 'bold';
-                 } else {
-                    paymentCell.style.color = 'orange';
-                 }
-                 paymentCell.style.textAlign = 'center';
-                 row.insertCell().textContent = order.status || "-";
-             });
-             } catch (err) {
-                 console.error("Lỗi khi tải đơn hàng:", err);
-                 tableBody.innerHTML = `<tr><td colspan='8' style='color:red; text-align: center;'>LỖI TẢI DỮ LIỆU: ${err.message}</td></tr>`;
-             }
-        }
-        
+        try {
+            const token = userInfo?.token; // Lấy token từ biến global userInfo
+            const res = await fetch('/api/payment/switch-bank', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ type: type })
+            });
+
+            const data = await res.json();
+            
+            if (res.ok) {
+                alert("✅ " + data.message);
+                // Cập nhật giao diện chữ
+                const label = type === 'MAIN' ? 'MB Bank (Chính)' : 'BIDV (Dự phòng)';
+                const color = type === 'MAIN' ? 'green' : '#e65100';
+                const statusSpan = document.getElementById('currentBankStatus');
+                if(statusSpan) {
+                    statusSpan.textContent = label;
+                    statusSpan.style.color = color;
+                }
+            } else {
+                alert("❌ Lỗi: " + data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Lỗi kết nối server");
+        }
+    }
+
+    // 1. Trả bàn (Dùng cho đơn đã thanh toán xong)
+    async function xacNhanTraBan(orderId) {
+        if (!confirm("Khách đã về? Xác nhận làm trống bàn này?")) return;
+        try {
+            const token = userInfo?.token;
+            const res = await fetch(`/api/donhang/${orderId}/finish`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showToast("✅ Đã trả bàn thành công!");
+                loadOrders(); // Load lại bảng
+            } else {
+                alert(data.message);
+            }
+        } catch (e) { console.error(e); alert("Lỗi server"); }
+    }
+
+    // 2. Hủy đơn (Dùng cho đơn sai/test)
+    async function huyDonHang(orderId) {
+        if (!confirm("Bạn chắc chắn muốn hủy đơn này?")) return;
+        try {
+            const token = userInfo?.token;
+            const res = await fetch(`/api/donhang/${orderId}`, {
+                method: 'DELETE', // Hoặc PUT status='Đã hủy' tùy API của bạn
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                showToast("Đã hủy đơn hàng.");
+                loadOrders();
+            } else {
+                alert("Lỗi khi hủy đơn");
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    // 3. Cập nhật trạng thái (Bắt đầu làm)
+    async function capNhatTrangThai(orderId, status) {
+        try {
+            const token = userInfo?.token;
+            const res = await fetch(`/api/donhang/status/${orderId}`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status })
+            });
+            if (res.ok) loadOrders();
+        } catch (e) { console.error(e); }
+    }
+
+    // 4. Thu tiền mặt
+    async function thanhToanTienMat(orderId) {
+        if (!confirm("Xác nhận đã thu đủ tiền mặt?")) return;
+        try {
+            const token = userInfo?.token;
+            const res = await fetch(`/api/donhang/mark-paid/${orderId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                showToast("✅ Đã xác nhận thanh toán!");
+                loadOrders();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+// === HÀM TẢI DỮ LIỆU ĐƠN HÀNG (ĐÃ FIX LỖI) ===
+    async function loadOrders() {
+         const tableBody = document.getElementById("orderTableBody"); // Đảm bảo lấy đúng element
+         if (!tableBody) return;
+
+         tableBody.innerHTML = "<tr><td colspan='9' style='text-align: center;'>⏳ Đang tải dữ liệu...</td></tr>";
+         
+         const token = userInfo?.token; 
+         if (!token) return; 
+
+         try {
+             const res = await fetch(`${window.location.origin}/api/donhang`, { 
+                 headers: { Authorization: `Bearer ${token}` } 
+             });
+             
+             if (!res.ok) { 
+                 throw new Error("Lỗi tải đơn hàng"); 
+             }
+             
+             const orders = await res.json();
+             
+             if (!Array.isArray(orders) || orders.length === 0) {
+                 tableBody.innerHTML = "<tr><td colspan='9' style='text-align: center;'>Không có đơn hàng nào.</td></tr>";
+                 return;
+             }
+             
+             // Sắp xếp đơn mới lên đầu
+             orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+             
+             // Xóa nội dung cũ
+             tableBody.innerHTML = "";
+
+             // Render từng dòng
+             orders.forEach((order) => {
+                 const row = tableBody.insertRow();
+                 
+                 // 1. Thời gian
+                 const time = new Date(order.createdAt).toLocaleString("vi-VN", {
+                     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                 });
+                 row.insertCell().textContent = time;
+                 
+                 // 2. Bàn
+                 row.insertCell().textContent = order.banId?.soBan || "Mang về";
+                 
+                 // 3. Tên khách
+                 row.insertCell().textContent = order.customerName || "-";
+                 
+                 // 4. Món ăn
+                 const itemsCell = row.insertCell();
+                 itemsCell.style.minWidth = '200px';
+                 if (order.items && order.items.length > 0) { 
+                     itemsCell.innerHTML = order.items.map(i => 
+                        `<div>- ${i.itemId ? (i.itemId.name || '?') : '?'} (x${i.quantity})</div>`
+                     ).join(''); 
+                 } else { 
+                     itemsCell.textContent = '-'; 
+                 }
+                 
+                 // 5. Ghi chú
+                 row.insertCell().textContent = order.notes || "-";
+                 
+                 // 6. Tổng tiền
+                 const totalCell = row.insertCell();
+                 totalCell.textContent = (order.totalPrice || 0).toLocaleString('vi-VN') + 'đ';
+                 totalCell.style.textAlign = 'right';
+                 totalCell.style.fontWeight = 'bold';
+                 
+                 // 7. Thanh toán (Trang thái tiền)
+                 const paymentCell = row.insertCell();
+                 // Kiểm tra kỹ các trường (ưu tiên trường mới)
+                 const daTra = order.amountPaid || 0;
+                 const tongTien = order.totalPrice || 0;
+                 let isPaid = (order.trangThaiThanhToan === 'Đã thanh toán') || (daTra >= tongTien && tongTien > 0);
+
+                 if(isPaid) {
+                    paymentCell.textContent = 'Đã thanh toán';
+                    paymentCell.style.color = 'green';
+                    paymentCell.style.fontWeight = 'bold';
+                 } else {
+                    paymentCell.textContent = 'Chưa thanh toán';
+                    paymentCell.style.color = 'orange';
+                 }
+                 paymentCell.style.textAlign = 'center';
+                 
+                 // 8. Trạng thái Đơn (Bếp)
+                 row.insertCell().textContent = order.status || "-";
+
+                 // 9. HÀNH ĐỘNG (Nút bấm)
+                 const actionCell = row.insertCell();
+                 actionCell.className = "actions-cell";
+                 let btnHtml = '';
+
+                 // Nếu đã thanh toán xong -> Hiện nút TRẢ BÀN
+                 if (isPaid) {
+                     btnHtml = `
+                        <button onclick="xacNhanTraBan('${order._id}')" class="btn-action btn-complete" title="Khách về, dọn bàn">
+                            👋 Trả bàn
+                        </button>
+                     `;
+                 } 
+                 // Nếu chưa xong -> Hiện các nút xử lý
+                 else {
+                     if (order.status === 'Mới') {
+                         btnHtml += `<button onclick="capNhatTrangThai('${order._id}', 'Đang xử lý')" class="btn-action btn-process">👨‍🍳 Bắt đầu</button> `;
+                     }
+                     btnHtml += `<button onclick="thanhToanTienMat('${order._id}')" class="btn-action btn-process" style="background:#17a2b8;">💵 Thu tiền</button> `;
+                     btnHtml += `<button onclick="huyDonHang('${order._id}')" class="btn-action btn-cancel">❌ Hủy</button>`;
+                 }
+                 actionCell.innerHTML = btnHtml;
+             });
+
+         } catch (err) {
+             console.error("Lỗi khi tải đơn hàng:", err);
+             tableBody.innerHTML = `<tr><td colspan='9' style='color:red; text-align: center;'>LỖI: ${err.message}</td></tr>`;
+         }
+    }
         // === HÀM LOGIC CHÍNH (ĐÃ DỌN DẸP LỖI SOCKET) ===
         function runPageLogic() {
             tableBody = document.getElementById("orderTableBody");
@@ -224,9 +409,42 @@
                      }
                 });
         });
+async function loadBankStatus() {
+        try {
+            const token = userInfo?.token;
+            const res = await fetch('/api/payment/current-bank', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                const type = data.currentKey; // 'MAIN' hoặc 'BACKUP'
+                const label = type === 'MAIN' ? 'MB Bank (Chính)' : 'BIDV (Dự phòng)';
+                const color = type === 'MAIN' ? 'green' : '#e65100'; // Cam đậm cho BIDV
+                
+                // Cập nhật giao diện
+                const statusSpan = document.getElementById('currentBankStatus');
+                if(statusSpan) {
+                    statusSpan.textContent = label;
+                    statusSpan.style.color = color;
+                }
+            }
+        } catch (e) { console.error("Lỗi lấy trạng thái NH:", e); }
+    }
+    // 👆👆👆 -------------------- 👆👆👆
+
+    // ... trong hàm runPageLogic() hoặc DOMContentLoaded ...
+    function runPageLogic() {
+        // ... code cũ ...
+        loadOrders(); 
+        
+        loadBankStatus(); // <--- GỌI HÀM NÀY ĐỂ KHI F5 NÓ TỰ CẬP NHẬT LẠI
+    }
     </script>
 
-        <script src="/js/chatbox.js"></script>
+       <script src="/js/script.js"></script> 
+
+<script src="/js/aiChat.js"></script>
 
 </body>
 </html>

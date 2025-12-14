@@ -107,9 +107,42 @@ exports.updateSoKhach = async (req, res) => {
     }
 };
 
-// 👇 BƯỚC SỬA LỖI: EXPORT CÁC HÀM
-// module.exports = {
-//     getAllBan,
-//     releaseBan,
-//     updateSoKhach
-// };
+// --- THAY THẾ HÀM RESET CŨ BẰNG HÀM NÀY ---
+
+exports.resetAllTables = async (req, res) => {
+    try {
+        // 1. Import cả 2 Model
+        const Ban = require('../models/ban'); 
+        const DonHang = require('../models/donHang'); 
+
+        console.log("🧹 Đang bắt đầu dọn dẹp hệ thống...");
+
+        // 2. RESET BÀN: Chuyển tất cả về trạng thái trống
+        await Ban.updateMany({}, { 
+            status: 'trống',      
+            isOccupied: false,    
+            currentOrder: null    
+        });
+
+        // 3. RESET ĐƠN HÀNG: Hủy tất cả các đơn đang "Mới" hoặc "Đang xử lý"
+        // (Bước này cực quan trọng để bàn không bị đỏ lại)
+        await DonHang.updateMany(
+            { status: { $in: ['Mới', 'Đang xử lý'] } }, // Tìm các đơn chưa xong
+            { 
+                status: 'Đã hủy', // Chuyển thành Đã hủy (hoặc 'Hoàn thành' tùy bạn)
+                notes: 'Hệ thống tự động hủy khi Reset' 
+            } 
+        );
+
+        console.log("✅ Đã dọn dẹp xong!");
+
+        res.json({ 
+            success: true, 
+            message: "🧹 Đã Reset toàn bộ! Bàn ghế sạch sẽ, đơn hàng cũ đã hủy." 
+        });
+
+    } catch (error) {
+        console.error("Lỗi Reset:", error);
+        res.status(500).json({ error: "Lỗi khi reset bàn" });
+    }
+};

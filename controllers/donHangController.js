@@ -1,7 +1,49 @@
 const DonHang = require('../models/donHang');
 const MonAn = require('../models/monAn');
 const Ban = require('../models/ban'); 
+const axios = require('axios'); // Đừng quên dòng này
 
+// 🔥 ĐÃ ĐIỀN THÔNG TIN TỪ FILE CŨ CỦA BẠN 🔥
+const TELEGRAM_BOT_TOKEN = '8147916467:AAHO8OPckpuCo1Ok0R43ancEQO9TL9kzNss'; 
+const TELEGRAM_CHAT_ID = '7219225363';
+
+// ... (phần hàm sendTelegramNotify giữ nguyên như hướng dẫn trước)
+async function sendTelegramNotify(order, title = "🔔 CÓ ĐƠN HÀNG MỚI!") {
+    try {
+        // ... (phần lấy itemsList, total, time giữ nguyên) ...
+        const itemsList = order.items.map(i => {
+            const name = i.itemId ? i.itemId.name : 'Món không xác định';
+            return `- ${name} (x${i.quantity})`;
+        }).join('\n');
+
+        const total = (order.totalPrice || 0).toLocaleString('vi-VN');
+        const tableName = order.banId ? order.banId.soBan : 'Mang về';
+        const time = new Date(order.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+        
+        // Thay tiêu đề cứng bằng biến ${title}
+        const message = `
+<b>${title}</b>
+--------------------
+👤 <b>Khách:</b> ${order.customerName}
+🍽 <b>Bàn:</b> ${tableName}
+💰 <b>Tổng tiền:</b> ${total}đ
+--------------------
+<b>Chi tiết món hiện tại:</b>
+${itemsList}
+--------------------
+⏰ <i>${time}</i>
+        `;
+
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'HTML'
+        });
+        console.log('✅ [Telegram] Đã gửi thông báo:', title);
+    } catch (error) {
+        console.error('❌ [Telegram] Lỗi:', error.message);
+    }
+}
 // === HÀM TẠO ĐƠN HÀNG (Chuẩn) ===
 exports.createNewOrder = async (req, res) => {
     const io = req.app.get('io');
@@ -59,15 +101,30 @@ exports.createNewOrder = async (req, res) => {
             .populate('user', 'username')
             .populate('banId', 'soBan');
 
-        // 6. Emit socket
+       // 6. Emit socket (Giữ nguyên)
         if (io) {
             io.emit('banUpdated', { _id: ban._id, soBan: ban.soBan, trangThai: ban.trangThai, donHangHienTai: ban.donHangHienTai });
             io.emit('new_order', populatedOrder);
         }
 
+        // 🔥🔥🔥 LOGIC GỬI TELEGRAM THÔNG MINH (SỬA ĐOẠN NÀY) 🔥🔥🔥
+        // 1. Nếu khách chọn 'cod' hoặc 'Tiền mặt' -> Gửi thông báo NGAY LẬP TỨC
+        // 2. Nếu khách chọn 'banking' hoặc 'zalopay' -> KHÔNG GỬI (Để dành cho Webhook lo)
+        
+        const phuongThuc = paymentMethod ? paymentMethod.toLowerCase() : '';
+        const listThanhToanNgay = ['cod', 'tiền mặt', 'cash', 'tien mat'];
+
+        if (listThanhToanNgay.includes(phuongThuc)) {
+            // Gửi ngay và luôn
+            sendTelegramNotify(populatedOrder, "🔔 ĐƠN MỚI (THANH TOÁN TẠI QUẦY)");
+        } 
+        else {
+            console.log("⏳ Đơn chuyển khoản: Chờ tiền về mới báo Telegram...");
+        }
+        // 🔥🔥🔥 KẾT THÚC SỬA 🔥🔥🔥
+
         console.log(`✅ Đơn hàng đã tạo: ${populatedOrder._id} (Trạng thái: Chưa thanh toán)`);
         return res.status(201).json({ donHang: populatedOrder });
-
     } catch (error) {
         console.error("Lỗi tạo đơn hàng:", error);
         if (ban && newOrder) { /* ... (Logic rollback bàn) ... */ }
@@ -113,31 +170,45 @@ exports.updateOrderStatus = async (req, res) => {
     }
 };
 
-// === (ADMIN) THANH TOÁN COD TẠI QUẦY ===
-// (ĐÃ SỬA: KHÔNG CẬP NHẬT STATUS, KHÔNG TRẢ BÀN)
+// --- 2. SỬA HÀM XÁC NHẬN THANH TOÁN (Thu nốt phần thiếu) ---
 exports.markOrderAsPaid = async (req, res) => {
-    const { id } = req.params; 
-    const io = req.app.get('io');
     try {
-        const order = await DonHang.findById(id);
-        if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
-        
+        const orderId = req.params.id;
+        const DonHang = require('../models/donHang');
+
+        const order = await DonHang.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+        }
+
+        // 1. Cập nhật trạng thái thanh toán (Khớp với field trong Model của bạn)
         order.trangThaiThanhToan = 'Đã thanh toán';
-        
-        const updatedOrder = await order.save();
-        const populatedOrder = await DonHang.findById(updatedOrder._id)
-            .populate('items.itemId', 'name gia price')
-            .populate('user', 'username')
-            .populate('banId', 'soBan');
-        
-        if (io) io.emit('order_updated', populatedOrder);
-        res.status(200).json(populatedOrder);
+
+        // 2. Gán số tiền đã trả = Tổng tiền đơn hàng
+        // ⚠️ QUAN TRỌNG: Model bạn dùng 'totalPrice', nên ở đây phải gọi 'totalPrice'
+        order.amountPaid = order.totalPrice; 
+
+        // 3. Các thông tin khác
+        order.paymentMethod = 'Tiền mặt';
+        order.paymentDate = new Date();
+
+        // 4. Giữ nguyên status là 'Đang xử lý' hoặc 'Mới' để không mất khỏi màn hình User
+        // (Trừ khi bạn muốn nó biến mất luôn thì đổi thành 'Hoàn thành')
+        // order.status = 'Hoàn thành'; // <-- Tùy bạn chọn
+
+        await order.save();
+
+        // Socket báo realtime
+        const io = req.app.get('io');
+        if (io) io.emit('order_updated', order);
+
+        res.json({ success: true, message: 'Đã xác nhận thanh toán tiền mặt', order });
+
     } catch (error) {
-        console.error("Lỗi khi cập nhật thanh toán:", error);
-        res.status(500).json({ message: 'Lỗi server: ' + error.message });
+        console.error(error);
+        res.status(500).json({ message: 'Lỗi server' });
     }
 };
-
 // === (ADMIN) TRẢ BÀN THỦ CÔNG ===
 exports.releaseTableManually = async (req, res) => {
     const { id } = req.params; // ID của ĐƠN HÀNG
@@ -335,5 +406,293 @@ exports.getDonHangByUser = async (req, res) => {
         res.json(donHang);
     } catch (error) {
         res.status(500).json({ message: "Lỗi khi lấy lịch sử đơn hàng" });
+    }
+};
+// ============================================================
+// 🔥 PHẦN BỔ SUNG: API CHO GIAO DIỆN CẬP NHẬT TIẾN TRÌNH (WEB UI)
+// ============================================================
+
+const LOCKED_STATUS = ['Đang xử lý', 'Đang nấu', 'Đang giao', 'Hoàn tất'];
+
+
+
+// 1. HÀM CẬP NHẬT MÓN (Có logic chặn khi Admin đã xử lý)
+exports.apiUpdateItem = async (req, res) => {
+    try {
+        const { orderId, itemId, quantity } = req.body;
+        const order = await DonHang.findById(orderId);
+        
+        if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn.' });
+
+        // --- 🔥 ĐOẠN CODE CHẶN SỬA ĐƠN (QUAN TRỌNG) 🔥 ---
+        // Nếu trạng thái KHÁC 'Mới' (tức là Đang xử lý, Hoàn thành...) thì chặn ngay.
+        if (order.status !== 'Mới') {
+            return res.status(400).json({ 
+                success: false, 
+                message: `⛔ Đơn hàng đang được nhà bếp xử lý (${order.status}). Bạn không thể thêm/bớt món lúc này. Vui lòng gọi nhân viên nếu cần hỗ trợ!` 
+            });
+        }
+        // -----------------------------------------------------
+
+      const itemIndex = order.items.findIndex(i => {
+            const currentId = i.itemId._id ? i.itemId._id.toString() : i.itemId.toString();
+            return currentId === itemId.toString();
+        });
+
+        if (quantity <= 0) {
+            if (itemIndex > -1) order.items.splice(itemIndex, 1);
+        } else {
+            if (itemIndex > -1) {
+                // Món đã có -> Cập nhật số lượng mới
+                order.items[itemIndex].quantity = parseInt(quantity);
+            } else {
+                // Món chưa có -> Thêm mới
+                order.items.push({ itemId, quantity: parseInt(quantity) });
+            }
+        }
+
+        // --- TÍNH TOÁN LẠI TIỀN ---
+        let newTotal = 0;
+        for (let item of order.items) {
+             const food = await MonAn.findById(item.itemId);
+             if(food) newTotal += food.price * item.quantity;
+        }
+        order.totalPrice = newTotal;
+
+        // Logic tính nợ (Giữ nguyên logic bạn đang có)
+        const daTra = order.amountPaid || 0; 
+        if (daTra === 0) {
+            order.trangThaiThanhToan = 'Chưa thanh toán';
+        } else {
+            if (newTotal > daTra) order.trangThaiThanhToan = 'Chờ thanh toán thêm';
+            else if (newTotal < daTra) order.trangThaiThanhToan = 'Chờ hoàn tiền';
+            else order.trangThaiThanhToan = 'Đã thanh toán';
+        }
+
+       await order.save();
+        if (req.io) req.io.emit('SERVER_UPDATE_ORDER', { tableId: order.banId, actionType: 'UPDATE' });
+
+        // 🔥🔥🔥 BẮT ĐẦU THÊM PHẦN NÀY 🔥🔥🔥
+        // 1. Lấy thông tin đầy đủ để gửi Telegram (Populate tên món, tên bàn)
+        const updatedOrderForBot = await DonHang.findById(order._id)
+            .populate('items.itemId', 'name price')
+            .populate('banId', 'soBan');
+
+        // 2. Gửi thông báo với tiêu đề riêng
+        sendTelegramNotify(updatedOrderForBot, "✏️ KHÁCH CẬP NHẬT MÓN");
+        // 🔥🔥🔥 KẾT THÚC PHẦN THÊM 🔥🔥🔥
+        
+        return res.status(200).json({ success: true, message: 'Cập nhật thành công!', order });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Lỗi server.' });
+    }
+};
+/// controllers/donHangController.js (Sửa lại hàm apiSwitchTable)
+exports.apiSwitchTable = async (req, res) => {
+    try {
+        const { orderId, newTableId } = req.body; 
+        
+        const order = await DonHang.findById(orderId);
+        if (!order) return res.status(404).json({ success: false, message: 'Đơn hàng không tồn tại.' });
+
+        // --- LOGIC TÌM BÀN MỚI THÔNG MINH HƠN (ĐÃ FIX LỖI 4 -> 14) ---
+        let banMoi = null;
+
+        // Cách 1: Thử tìm theo ID (nếu input đúng chuẩn MongoDB ID 24 ký tự)
+        if (newTableId.match(/^[0-9a-fA-F]{24}$/)) {
+            banMoi = await Ban.findById(newTableId);
+        }
+
+        // Cách 2: Nếu không phải ID -> Tìm theo Tên/Số bàn chính xác
+        if (!banMoi) {
+            // 💡 GIẢI THÍCH REGEX MỚI:
+            // ^                     : Bắt đầu chuỗi
+            // (?:Bàn|Ban|Table)?    : Chấp nhận tiền tố "Bàn", "Ban", "Table" (có hoặc không)
+            // \s* : Chấp nhận khoảng trắng (ví dụ "Bàn 4")
+            // 0* : Chấp nhận số 0 ở đầu (ví dụ nhập "4" tìm ra "04")
+            // ${newTableId}         : Số khách nhập vào
+            // $                     : Kết thúc chuỗi (QUAN TRỌNG: Để chặn số 4 khớp với 14)
+
+            const regexString = `^(?:Bàn|Ban|Table)?\\s*0*${newTableId}$`;
+            
+            banMoi = await Ban.findOne({ 
+                soBan: { $regex: new RegExp(regexString, 'i') } 
+            });
+        }
+
+        // Nếu vẫn không thấy
+        if (!banMoi) {
+            return res.status(404).json({ success: false, message: `Không tìm thấy bàn nào có tên/số là "${newTableId}"` });
+        }
+        // ----------------------------------------
+        
+        // Kiểm tra bàn có trống không
+        if (banMoi.donHangHienTai || (banMoi.trangThai && banMoi.trangThai !== 'Trống')) {
+            return res.status(400).json({ success: false, message: `Bàn ${banMoi.soBan} đang có khách, không thể chuyển sang.` });
+        }
+
+        // Check khóa đơn
+        if (order.status === 'Đang giao' || order.status === 'Hoàn tất') {
+             return res.status(400).json({ success: false, message: 'Đơn đang giao hoặc đã xong, không thể chuyển bàn.' });
+        }
+
+        const oldTableId = order.banId;
+
+        // Cập nhật Đơn hàng
+        order.banId = banMoi._id;
+        await order.save();
+
+        // Cập nhật Bàn Cũ -> Trống
+        if (oldTableId) {
+            await Ban.findByIdAndUpdate(oldTableId, { 
+                trangThai: 'Trống', 
+                donHangHienTai: null 
+            });
+        }
+
+        // Cập nhật Bàn Mới -> Có khách
+        banMoi.trangThai = 'Đang phục vụ';
+        banMoi.donHangHienTai = order._id;
+        await banMoi.save();
+
+        // Socket logic (nếu có)
+        if (req.io) {
+             if (oldTableId) req.io.emit('SERVER_UPDATE_ORDER', { tableId: oldTableId, actionType: 'CLEAR' });
+             req.io.emit('SERVER_UPDATE_ORDER', { tableId: banMoi._id, actionType: 'UPDATE' });
+        }
+
+        // 🔥🔥🔥 BẮT ĐẦU THÊM PHẦN NÀY 🔥🔥🔥
+        // 1. Lấy lại đơn hàng (để cập nhật tên bàn mới nhất vừa đổi)
+        const switchedOrderForBot = await DonHang.findById(orderId)
+            .populate('items.itemId', 'name price')
+            .populate('banId', 'soBan');
+
+        // 2. Gửi thông báo
+        sendTelegramNotify(switchedOrderForBot, "🔄 KHÁCH ĐÃ CHUYỂN BÀN");
+        // 🔥🔥🔥 KẾT THÚC PHẦN THÊM 🔥🔥🔥
+
+        return res.status(200).json({ success: true, message: `Đã chuyển sang ${banMoi.soBan}` });
+
+    } catch (error) {
+        console.error("API Switch Table Error:", error);
+        return res.status(500).json({ success: false, message: 'Lỗi server: ' + error.message });
+    }
+};
+// ============================================================
+// 🔥 API MỚI: TRẢ BÀN (KHÁCH VỀ) - KHÔNG XÓA ĐƠN
+// ============================================================
+exports.finishTableSession = async (req, res) => {
+    try {
+        const { id } = req.params; // ID đơn hàng
+        const order = await DonHang.findById(id);
+        
+        if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng.' });
+        
+        // 1. Giải phóng bàn (Về trạng thái Trống)
+        if (order.banId) {
+            const updatedBan = await Ban.findByIdAndUpdate(
+                order.banId,
+                { trangThai: 'Trống', donHangHienTai: null, soKhach: 0 },
+                { new: true }
+            );
+
+            // Báo socket để Sơ đồ bàn cập nhật màu xám ngay lập tức
+            if (req.app.get('io')) {
+                req.app.get('io').emit('banUpdated', updatedBan);
+            }
+        }
+        
+        // 2. Đơn hàng giữ nguyên (để lưu doanh thu), không xóa!
+        
+        res.json({ success: true, message: 'Đã trả bàn thành công.' });
+
+    } catch (error) {
+        console.error("Lỗi trả bàn:", error);
+        res.status(500).json({ success: false, message: 'Lỗi server khi trả bàn' });
+    }
+};
+// === API THỐNG KÊ DOANH THU HÔM NAY ===
+exports.getDailyStats = async (req, res) => {
+    try {
+        // 1. NHẬN NGÀY TỪ FRONTEND (req.query.date)
+        // Nếu không gửi gì lên thì mặc định lấy ngày hôm nay (new Date())
+        const { date } = req.query;
+        
+        let queryDate;
+        if (date) {
+            queryDate = new Date(date); // Ví dụ: "2023-10-25"
+        } else {
+            queryDate = new Date(); // Hôm nay
+        }
+
+        // 2. Tính toán đầu ngày và cuối ngày của ngày được chọn
+        // Lưu ý: Clone ra đối tượng mới để không bị sửa đổi lẫn lộn
+        const startOfDay = new Date(queryDate);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(queryDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // --- CÁC PHẦN DƯỚI GIỮ NGUYÊN ---
+        const orders = await DonHang.find({
+            createdAt: { $gte: startOfDay, $lte: endOfDay },
+            trangThaiThanhToan: 'Đã thanh toán', 
+            status: { $ne: 'Đã hủy' }
+        });
+
+        // ... (Đoạn code tính toán vòng lặp forEach giữ nguyên như cũ) ...
+        let totalRevenue = 0;
+        let totalOrders = orders.length;
+        let cashRevenue = 0;
+        let onlineRevenue = 0;
+        let hourlyRevenue = new Array(24).fill(0); 
+
+        orders.forEach(order => {
+            const money = order.totalPrice || 0;
+            totalRevenue += money;
+            
+            // Kiểm tra phương thức thanh toán
+            if (['cod', 'cash', 'Tiền mặt'].includes(order.paymentMethod)) {
+                cashRevenue += money;
+            } else {
+                onlineRevenue += money;
+            }
+
+            const hour = new Date(order.createdAt).getHours();
+            hourlyRevenue[hour] += money;
+        });
+
+        res.json({
+            success: true,
+            data: { totalRevenue, totalOrders, cashRevenue, onlineRevenue, hourlyRevenue }
+        });
+
+    } catch (error) {
+        console.error("Lỗi thống kê:", error);
+        res.status(500).json({ success: false, message: "Lỗi server" });
+    }
+};
+exports.getDonHangById = async (req, res) => {
+    try {
+        // 👇 SỬA LẠI ĐÚNG TÊN FILE CỦA BẠN Ở ĐÂY 👇
+        // (Lưu ý: Nếu file bạn viết hoa là DonHang.js thì sửa thành './models/DonHang')
+        const DonHang = require('../models/donHang'); 
+        
+        console.log("🔍 Frontend đang hỏi trạng thái đơn:", req.params.id);
+
+        const order = await DonHang.findById(req.params.id);
+        
+        if (!order) {
+            return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+        }
+        
+        // Trả về kết quả cho Frontend
+        res.json(order); 
+
+    } catch (error) {
+        console.error("🔥 Lỗi lấy đơn hàng:", error);
+        // Nếu lỗi do import sai file, nó sẽ báo rõ ở đây
+        res.status(500).json({ message: "Lỗi server", error: error.message });
     }
 };

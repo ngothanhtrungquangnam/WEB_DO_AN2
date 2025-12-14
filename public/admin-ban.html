@@ -164,29 +164,39 @@
                 closeModal();
             } catch (err) { alert(`Lỗi: ${err.message}`); }
         }
-        async function handleMarkAsPaid(orderId) {
-            if (!confirm(`Xác nhận THU TIỀN (COD) cho đơn #${orderId.substring(0, 6)}?`)) return;
-            try {
-                const response = await fetch(`/api/donhang/mark-paid/${orderId}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${userInfo.token}` }
-                });
-                if (!response.ok) throw new Error((await response.json()).message);
-                closeModal();
-            } catch (err) { alert(`Lỗi: ${err.message}`); }
-        }
-        async function handleReleaseTable(orderId) {
-            if (!confirm(`Bạn có chắc muốn TRẢ BÀN cho đơn hàng #${orderId.substring(0, 6)}?`)) return;
-            try {
-                const response = await fetch(`/api/donhang/release-table/${orderId}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${userInfo.token}` }
-                });
-                if (!response.ok) throw new Error((await response.json()).message);
-                closeModal();
-            } catch (err) { alert(`Lỗi: ${err.message}`); }
-        }
+     async function handleMarkAsPaid(orderId) {
+    if (!confirm(`Xác nhận đã nhận đủ tiền mặt từ khách?`)) return;
+    try {
+        // Gọi API PUT /pay mà bạn vừa tạo
+        const response = await fetch(`/api/donhang/${orderId}/pay`, {
+            method: 'PUT', // Sửa thành PUT
+            headers: { 'Authorization': `Bearer ${userInfo.token}` } // Không cần Content-Type json vì không gửi body
+        });
         
+        if (!response.ok) throw new Error((await response.json()).message);
+        
+        // Đóng modal cũ
+        closeModal();
+        // Mẹo: Gọi lại showOrderDetailModal để mở lại modal ngay lập tức -> thấy nút "Trả bàn" hiện ra luôn
+        // showOrderDetailModal(orderId); 
+    } catch (err) { alert(`Lỗi: ${err.message}`); }
+}
+       async function handleReleaseTable(orderId) {
+    if (!confirm(`Khách đã về và dọn bàn xong? (Bàn sẽ chuyển sang trạng thái Trống)`)) return;
+    try {
+        // Gọi API PUT /finish
+        const response = await fetch(`/api/donhang/${orderId}/finish`, {
+            method: 'PUT', // Sửa thành PUT
+            headers: { 'Authorization': `Bearer ${userInfo.token}` }
+        });
+        
+        if (!response.ok) throw new Error((await response.json()).message);
+        
+        closeModal();
+        // Load lại sơ đồ bàn (thực ra socket đã tự làm rồi, nhưng gọi thêm cho chắc)
+        loadDataAndRenderMap();
+    } catch (err) { alert(`Lỗi: ${err.message}`); }
+}
         // === CÁC HÀM HIỂN THỊ (RENDER) ===
 
         // 4. Tải và Vẽ Sơ đồ bàn (ĐÃ SỬA LỖI LOGIC)
@@ -322,31 +332,167 @@
             document.getElementById('orderDetailModal').style.display = 'none';
         }
 
-        // 7. Vẽ các nút hành động (LOGIC MỚI VỚI NÚT "TRẢ BÀN")
-        function renderActionButtons(order) {
-            let buttonsHtml = '';
-            
-            if (order.phuongThucThanhToan === 'Tiền mặt' && order.trangThaiThanhToan !== 'Đã thanh toán') {
-                buttonsHtml += `<button class="btn-mark-paid" data-action="mark-paid">Đã thu tiền (COD)</button>`;
-            }
+// public/admin-ban.html
 
-            if (order.status === 'Mới') {
-                buttonsHtml += `<button class="btn-processing" data-action="processing">Đang xử lý</button>`;
-                buttonsHtml += `<button class="btn-cancel" data-action="cancel">Hủy đơn</button>`;
-            } else if (order.status === 'Đang xử lý') {
-                buttonsHtml += `<button class="btn-complete" data-action="complete">Hoàn thành</button>`;
-                buttonsHtml += `<button class="btn-cancel" data-action="cancel">Hủy đơn</button>`;
-            }
-            
-            // Nút TRẢ BÀN (Chỉ hiện khi đã Hoàn thành VÀ Đã thanh toán)
-            if (order.status === 'Hoàn thành' && order.trangThaiThanhToan === 'Đã thanh toán') {
-                 buttonsHtml += `<button class="btn-release-table" data-action="release-table">Trả bàn</button>`;
-            }
+function renderActionButtons(order) {
+    let buttonsHtml = '';
+    
+    // 1. TÍNH TOÁN TIỀN NONG
+    const tongTien = parseInt(order.totalPrice) || 0;
+    let daTra = parseInt(order.amountPaid) || 0; 
 
-            buttonsHtml += `<button class="btn-delete" data-action="delete">Xóa Đơn</button>`;
-            return buttonsHtml;
+    // Fix lỗi đơn cũ: Nếu trạng thái là "Đã thanh toán" mà trong DB ghi đã trả = 0 -> Coi như đã trả đủ
+    if (order.trangThaiThanhToan === 'Đã thanh toán' && daTra === 0) {
+        daTra = tongTien;
+    }
+
+    const chenhLech = tongTien - daTra; 
+    const daHoanThanh = order.status === 'Hoàn thành';
+    // Đã thanh toán xong khi: Trạng thái đúng VÀ Tiền đã đủ (<=0)
+    // Lưu ý: Trường hợp dư tiền (chenhLech < 0) vẫn cần xử lý hoàn tiền trước khi cho phép trả bàn
+    const daThanhToanXong = (order.trangThaiThanhToan === 'Đã thanh toán' || order.trangThaiThanhToan === 'Chờ hoàn tiền') && chenhLech <= 0;
+
+    // 2. DEFINES STYLES
+    const btnFull = 'width:100%; font-size:1.1rem; padding:12px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; color:white; margin-top:5px;';
+    const btnHalf = 'width:48%; font-size:1rem; padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; color:white; margin-top:5px;';
+    const outlineGrayStyle = 'background:none; border: 1px solid #ccc; color: #777; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer;';
+    const statusTextStyle = 'text-align: center; margin-bottom: 12px; font-weight: 600; font-size: 1.1rem;';
+    
+    // Nút In hóa đơn (Nhỏ, xám nhạt, nằm dưới)
+    const btnPrintStyle = 'width:100%; padding:8px; margin-top:15px; margin-bottom:5px; border:1px solid #ccc; background:#f9f9f9; color:#555; font-weight:600; border-radius:5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-size:0.95rem; transition: all 0.2s;';
+    const btnPrint = `<button onclick="printBill('${order._id}')" style="${btnPrintStyle}" onmouseover="this.style.background='#eee'" onmouseout="this.style.background='#f9f9f9'">🖨️ In hóa đơn</button>`;
+
+    // =========================================================
+    // LOGIC HIỂN THỊ
+    // =========================================================
+
+    // TRƯỜNG HỢP 1: Đơn MỚI hoặc ĐANG XỬ LÝ
+    if (order.status === 'Mới' || order.status === 'Đang xử lý') {
+        
+        // Các nút tác vụ chính (Bếp)
+        buttonsHtml += `<div style="display:flex; justify-content:space-between;">`;
+        if (order.status === 'Mới') {
+            buttonsHtml += `<button class="btn-processing" data-action="processing" style="${btnHalf} background:#007bff;">👨‍🍳 Bắt đầu làm</button>`;
+        } else {
+            buttonsHtml += `<button class="btn-complete" data-action="complete" style="${btnHalf} background:#28a745;">✅ Đã xong món</button>`;
+        }
+        buttonsHtml += `<button class="btn-cancel" data-action="cancel" style="${btnHalf} background:#dc3545;">❌ Hủy đơn</button>`;
+        buttonsHtml += `</div>`;
+
+        // Nút In hóa đơn (Nằm dưới)
+        buttonsHtml += btnPrint;
+    } 
+    
+    // TRƯỜNG HỢP 2: Đơn đã HOÀN THÀNH (Bếp xong -> Thu ngân)
+    else if (daHoanThanh) {
+        
+        // --- ƯU TIÊN 1: XỬ LÝ TIỀN THỪA (HOÀN TIỀN) ---
+        // Nếu chênh lệch < 0 (Khách trả dư), BẮT BUỘC hiện nút hoàn tiền trước
+        if (chenhLech < 0) {
+            const tienHoan = Math.abs(chenhLech);
+          buttonsHtml += `
+        <div style="background-color: #fff3e0; padding: 12px; border-radius: 8px; border: 1px solid #ffe0b2; margin-bottom: 15px;">
+            <div style="display:flex; justify-content:space-between; color:#555; margin-bottom: 5px;">
+                <span>Tổng đơn:</span> <strong>${tongTien.toLocaleString()}đ</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:#555; border-bottom:1px dashed #ccc; padding-bottom:8px; margin-bottom:8px;">
+                <span>Đã thanh toán:</span> <span>-${daTra.toLocaleString()}đ</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:#d84315; font-weight:bold; font-size:1.2rem;">
+                <span>CẦN HOÀN LẠI:</span> <span>${tienHoan.toLocaleString()}đ</span>
+            </div>
+        </div>
+
+        <button onclick="handleMarkAsPaid('${order._id}', 'Hoàn tiền')" style="${btnFull} background-color:#ff7043; box-shadow: 0 4px 6px rgba(255, 112, 67, 0.3);">
+            💸 Xác nhận đã hoàn tiền
+        </button>
+    `;
         }
         
+        // --- ƯU TIÊN 2: XỬ LÝ TIỀN THIẾU (THU THÊM) ---
+        // Nếu còn thiếu tiền (chenhLech > 0)
+        else if (chenhLech > 0) {
+            let bangTinhTien = '';
+            
+            // A. Đã trả 1 phần -> Hiện bảng tính chi tiết
+            if (daTra > 0) {
+                bangTinhTien = `
+                    <div style="background-color: #fff3cd; padding: 12px; border-radius: 8px; border: 1px solid #ffeeba; margin-bottom: 15px;">
+                        <div style="display:flex; justify-content:space-between; color:#555; margin-bottom: 5px;">
+                            <span>Tổng món ăn:</span> <strong>${tongTien.toLocaleString()}đ</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; color:#555; border-bottom:1px dashed #ccc; padding-bottom:8px; margin-bottom:8px;">
+                            <span>Đã thanh toán:</span> <span>- ${daTra.toLocaleString()}đ</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; color:#d32f2f; font-weight:bold; font-size:1.2rem;">
+                            <span>CẦN TRẢ THÊM:</span> <span>${chenhLech.toLocaleString()}đ</span>
+                        </div>
+                    </div>
+                `;
+            } 
+            // B. Chưa trả đồng nào -> Hiện tổng tiền đơn giản
+            else {
+                bangTinhTien = `
+                    <div style="${statusTextStyle} color:#d39e00;">
+                        ⚠️ Khách chưa thanh toán <br>
+                        <span style="font-size: 1.3rem; color: #333;">${tongTien.toLocaleString()}đ</span>
+                    </div>
+                `;
+            }
+
+            buttonsHtml += `
+                ${bangTinhTien}
+                <button onclick="handleMarkAsPaid('${order._id}', 'Tiền mặt')" style="${btnFull} background-color:#ff7043; box-shadow: 0 4px 6px rgba(255, 112, 67, 0.3);">
+                    💰 Thanh toán ngay
+                </button>
+            `;
+        }
+        
+        // --- ƯU TIÊN 3: TRẢ ĐỦ -> TRẢ BÀN ---
+        // Chỉ hiện khi chênh lệch = 0 (Đã hoàn tất tiền nong)
+        else {
+            buttonsHtml += `
+                <div style="${statusTextStyle} color: #28a745;">
+                    ✅ Đã thanh toán xong (${tongTien.toLocaleString()}đ)
+                </div>
+                <button data-action="release-table" style="${btnFull} background-color:#28a745;">
+                    🏁 Trả bàn
+                </button>
+            `;
+        }
+
+        // --- CÁC NÚT PHỤ (Luôn nằm dưới cùng) ---
+        // Nút In hóa đơn
+        buttonsHtml += btnPrint;
+        
+        // Nút Xóa đơn (Nhỏ nhất)
+        buttonsHtml += `<div style="text-align:center; margin-top:10px;"><button data-action="delete" style="${outlineGrayStyle}">🗑️ Xóa đơn</button></div>`;
+    }
+
+    return buttonsHtml;
+}
+// --- 2. HÀM GỌI API THANH TOÁN ---
+async function handleMarkAsPaid(orderId, method) {
+    if (!confirm(`Xác nhận khách thanh toán bằng: ${method}?`)) return;
+    
+    try {
+        const response = await fetch(`/api/donhang/mark-paid/${orderId}`, {
+            method: 'POST', 
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${userInfo.token}` 
+            },
+            // Gửi phương thức thanh toán lên server
+            body: JSON.stringify({ paymentMethod: method }) 
+        });
+        
+        if (!response.ok) throw new Error((await response.json()).message);
+        
+        // Cập nhật lại modal ngay lập tức để thấy nút "Trả bàn"
+        showOrderDetailModal(orderId); 
+        
+    } catch (err) { alert(`Lỗi: ${err.message}`); }
+}
         // 8. Gắn sự kiện cho các nút
         function attachActionEvents(order, container) {
             container.querySelector('[data-action="processing"]')?.addEventListener('click', () => handleUpdateStatus(order._id, 'Đang xử lý'));
@@ -376,13 +522,19 @@
                 });
             }
             
-            const navAdminDon = document.getElementById("nav-admin-link"); 
-            const navAdminBan = document.getElementById("nav-table-link"); 
-            const utilityDropdown = document.getElementById("utilityDropdown");
+            // ... trong hàm runPageLogic ...
 
-            if (navAdminDon) navAdminDon.style.display = "inline-block";
-            if (navAdminBan) navAdminBan.style.display = "inline-block";
-            if (utilityDropdown) utilityDropdown.style.display = "inline-block";
+const navAdminDon = document.getElementById("nav-admin-link"); 
+const navAdminBan = document.getElementById("nav-table-link"); 
+// 🔥 1. THÊM DÒNG NÀY (Lấy nút Thống kê)
+const navStatsLink = document.getElementById("nav-stats-link"); 
+const utilityDropdown = document.getElementById("utilityDropdown");
+
+if (navAdminDon) navAdminDon.style.display = "inline-block";
+if (navAdminBan) navAdminBan.style.display = "inline-block";
+// 🔥 2. THÊM DÒNG NÀY (Hiển thị nó lên)
+if (navStatsLink) navStatsLink.style.display = "inline-block"; 
+if (utilityDropdown) utilityDropdown.style.display = "inline-block";
 
             // 3. Gắn sự kiện cho nút đóng Modal
             document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -421,6 +573,83 @@
                     runPageLogic(); // Vẫn chạy dù menu lỗi
                 });
         });
+        // === HÀM IN HÓA ĐƠN (MỚI THÊM) ===
+async function printBill(orderId) {
+    try {
+        // 1. Lấy thông tin mới nhất của đơn hàng
+        const res = await fetch(`/api/donhang/details/${orderId}`, {
+            headers: { 'Authorization': `Bearer ${userInfo.token}` }
+        });
+        const order = await res.json();
+
+        // 2. Chuẩn bị dữ liệu tính toán
+        const tongTien = parseInt(order.totalPrice) || 0;
+        let daTra = parseInt(order.amountPaid) || 0;
+        // Fix lỗi đơn cũ nếu cần
+        if (order.trangThaiThanhToan === 'Đã thanh toán' && daTra === 0) daTra = tongTien;
+        
+        const conLai = tongTien - daTra;
+        const date = new Date(order.createdAt).toLocaleString('vi-VN');
+
+        // 3. Tạo nội dung HTML cho hóa đơn (Khổ K80)
+        const itemsHtml = order.items.map(item => `
+            <tr style="border-bottom: 1px dashed #ccc;">
+                <td style="padding: 5px 0;">${item.itemId?.name || 'Món đã xóa'} <br> <small>x${item.quantity}</small></td>
+                <td style="text-align: right;">${((item.itemId?.gia || item.itemId?.price || 0) * item.quantity).toLocaleString()}</td>
+            </tr>
+        `).join('');
+
+        // 4. Mở cửa sổ in
+        const printWindow = window.open('', '', 'height=600,width=400');
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Hóa Đơn</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; font-size: 14px; width: 300px; margin: 0 auto; color: #000; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .header h2 { margin: 0; font-size: 20px; text-transform: uppercase; }
+                    table { width: 100%; border-collapse: collapse; }
+                    .totals { margin-top: 15px; border-top: 2px solid #000; padding-top: 10px; }
+                    .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+                    .bold { font-weight: bold; }
+                    .footer { text-align: center; margin-top: 30px; font-style: italic; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>QUÁN ĂN NGON</h2>
+                    <p>ĐC: 54 Đường Nguyễn Lương Bằng,TP.Đà Nẳng </p>
+                </div>
+                <div style="margin-bottom: 15px; font-size: 12px;">
+                    <div>Phiếu: #${order._id.slice(-6).toUpperCase()}</div>
+                    <div>Ngày: ${date}</div>
+                    <div>Bàn: <strong>${order.banId?.soBan || 'Mang về'}</strong></div>
+                </div>
+                <table>
+                    <thead>
+                        <tr style="border-bottom: 2px solid #000;">
+                            <th style="text-align: left;">Món</th>
+                            <th style="text-align: right;">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemsHtml}</tbody>
+                </table>
+                <div class="totals">
+                    <div class="row bold" style="font-size: 16px;"><span>TỔNG CỘNG:</span><span>${tongTien.toLocaleString()}đ</span></div>
+                    ${daTra > 0 ? `<div class="row"><span>Đã thanh toán:</span><span>-${daTra.toLocaleString()}đ</span></div>` : ''}
+                    ${conLai > 0 ? `<div class="row bold" style="margin-top:5px; border-top:1px dashed #000; padding-top:5px;"><span>CẦN THANH TOÁN:</span><span>${conLai.toLocaleString()}đ</span></div>` : ''}
+                </div>
+                <div class="footer"><p>Cảm ơn quý khách!</p></div>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+
+    } catch (err) { alert("Lỗi in: " + err.message); }
+}
     </script>
     <script src="/js/data.js"></script>
 </body>

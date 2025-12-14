@@ -6,35 +6,61 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const axios = require('axios');
 
-// 1. IMPORT SERVICE MỚI
-const { sendToDialogflow } = require('./services/dialogflowService'); 
-const { getOrderStatus, getFeaturedMenu } = require('./data/restaurantData');
-// === Import Routes ===
+
+const TELEGRAM_BOT_TOKEN = '8147916467:AAHO8OPckpuCo1Ok0R43ancEQO9TL9kzNss'; 
+const TELEGRAM_CHAT_ID = '7219225363';
+// === 1. Import Models (BẮT BUỘC THÊM DÒNG NÀY) ===
+// Để dùng được trong hàm Webhook bên dưới
+// Hãy kiểm tra kỹ file model của bạn tên là 'Order.js' hay 'DonHang.js'
+const Order = require('./models/donHang'); 
+
+// === 2. Import Routes ===
 const monAnRoutes = require('./routes/monAnRoutes');
 const donHangRoutes = require('./routes/donHangRoutes');
 const authRoutes = require('./routes/authRoutes');
 const banRoutes = require('./routes/banRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
-// === App Setup ===
+const aiRoutes = require('./routes/aiRoutes'); // Route cho Chatbot AI Studio mới
+
+// === 3. App Setup ===
 const app = express();
 const server = http.createServer(app);
 
+// Hàm gửi tin nhắn (dùng chung)
+const sendTelegramMessage = async (message) => {
+    try {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        await axios.post(url, {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'HTML'
+        });
+        console.log("✅ Đã gửi thông báo Telegram");
+    } catch (error) {
+        console.error("Lỗi gửi Telegram:", error.message);
+    }
+};
 // Cấu hình Socket.IO
 const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
-  },
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
+  },
 });
 
-// === Environment ===
-const PORT = process.env.PORT || 3000;
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
 
-// === Kết nối MongoDB ===
+// === 4. Environment & Database ===
+const PORT = process.env.PORT || 3000;
 connectDB();
 
-// === Middleware ===
+// === 5. Middleware ===
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -42,194 +68,192 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ✅ Gán io vào app thay vì req
 app.set('io', io);
 
-// === API Routes ===
+// THÊM: Sử dụng Helmet để thiết lập các tiêu đề bảo mật
+app.use(helmet({
+  // 🔥 SỬA DÒNG NÀY: Đặt thành false để tắt kiểm tra COOP
+  // Điều này giúp Firebase kiểm tra được cửa sổ Popup Google mà không báo lỗi đỏ
+  crossOriginOpenerPolicy: false, 
+  
+  // Giữ nguyên dòng này
+  crossOriginEmbedderPolicy: false, 
+}));
+// ============================================================
+// === 6. API ROUTES (Đặt tất cả API lên trên cùng) ===
+// ============================================================
+
 app.use('/api/mon-an', monAnRoutes);
+app.use('/api/monan', monAnRoutes);  // Fix lỗi Frontend cũ
 app.use('/api/auth', authRoutes); 
 app.use('/api/donhang', donHangRoutes);
 app.use('/api/ban', banRoutes); 
 app.use('/api/payment', paymentRoutes);
+app.use('/api/ai-chat', aiRoutes);   // API Chatbot AI
 
-// === Socket.IO xử lý realtime ===
+// 🔥 WEBHOOK CASSO (ĐÃ NÂNG CẤP)
+app.post('/api/casso', async (req, res) => {
+    try {
+        console.log("👉 [CASSO] Nhận được Webhook...");
+        const { data } = req.body;
 
-// Định nghĩa một "room" (phòng) riêng cho Admin
+        if (!data || data.length === 0) {
+            return res.status(400).json({ message: "Không có dữ liệu" });
+        }
+
+        for (const giaoDich of data) {
+            const noiDungCK = giaoDich.description; 
+            const soTien = giaoDich.amount;
+
+            console.log(`💰 Giao dịch: ${soTien} VNĐ - Nội dung: ${noiDungCK}`);
+
+            // Tách mã đơn hàng
+            const match = noiDungCK.match(/[a-fA-F0-9]{24}/); 
+            
+            if (match) {
+                const maDonHang = match[0].toLowerCase(); 
+                console.log("📦 Tìm thấy mã đơn hàng:", maDonHang);
+
+                // --- CẬP NHẬT DATABASE ---
+                const updatedOrder = await Order.findByIdAndUpdate(
+                    maDonHang, 
+                    { 
+                        $set: {
+                            status: 'Mới',              
+                            trangThaiThanhToan: 'Đã thanh toán', 
+                            paymentMethod: 'banking',    
+                            paymentDate: new Date()
+                        },
+                        $inc: {
+                            amountPaid: soTien // Cộng dồn tiền
+                        }
+                    }, 
+                    { new: true }
+                );
+                
+                if (updatedOrder) {
+                    console.log(`✅ CẬP NHẬT THÀNH CÔNG! Đơn hàng ${maDonHang} -> PAID`);
+                    
+                    // 1. Gửi Socket realtime
+                    io.to('admin_chat_room').emit('order:updated', updatedOrder);
+                    io.emit('SERVER_UPDATE_ORDER', { orderId: maDonHang }); // Reload cho các client khác
+
+                    // 🔥🔥🔥 2. GỬI TELEGRAM (CODE MỚI) 🔥🔥🔥
+                    try {
+                        // Gọi lại DB để lấy tên bàn và tên món (populate)
+                        const fullOrder = await Order.findById(maDonHang)
+                            .populate('banId', 'soBan')
+                            .populate('items.itemId', 'name');
+
+                        if (fullOrder) {
+                            const tenBan = fullOrder.banId ? fullOrder.banId.soBan : 'Mang về';
+                            const tongTien = fullOrder.totalPrice.toLocaleString('vi-VN');
+                            const tienVuaVao = soTien.toLocaleString('vi-VN');
+                            const daTra = fullOrder.amountPaid.toLocaleString('vi-VN');
+
+                            let msg = `🔔 <b>KHÁCH ĐÃ CHUYỂN KHOẢN!</b>\n`;
+                            msg += `--------------------------------\n`;
+                            msg += `🪑 <b>Vị trí:</b> ${tenBan}\n`;
+                            msg += `👤 <b>Khách:</b> ${fullOrder.customerName}\n`;
+                            msg += `💸 <b>Vừa chuyển:</b> +${tienVuaVao}đ\n`;
+                            msg += `💰 <b>Tổng đã trả:</b> ${daTra}/${tongTien}đ\n`;
+                            msg += `📝 <b>Chi tiết món:</b>\n`;
+                            
+                            fullOrder.items.forEach(item => {
+                                const tenMon = item.itemId ? item.itemId.name : 'Món đã xóa';
+                                msg += `- ${tenMon} (x${item.quantity})\n`;
+                            });
+
+                            sendTelegramMessage(msg);
+                        }
+                    } catch (teleErr) {
+                        console.error("Lỗi tạo tin nhắn Telegram:", teleErr);
+                    }
+                    // 🔥🔥🔥 KẾT THÚC PHẦN TELEGRAM 🔥🔥🔥
+
+                } else {
+                    console.log(`❌ LỖI: Có ID ${maDonHang} nhưng không tìm thấy trong Database`);
+                }
+
+            } else {
+                console.log("⚠️ Không tìm thấy mã đơn hàng trong nội dung chuyển khoản");
+            }
+        }
+
+        return res.status(200).json({ error: 0, message: "Ok" });
+
+    } catch (error) {
+        console.error("🔥 Lỗi xử lý webhook:", error);
+        return res.status(500).json({ error: 1, message: "Lỗi server" });
+    }
+});
+
+
+// ============================================================
+// === 7. SOCKET.IO REALTIME LOGIC (Giữ nguyên) ===
+// ============================================================
+
 const ADMIN_ROOM = 'admin_chat_room';
 
 io.on('connection', (socket) => {
-  console.log(`🔌 Client kết nối: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`❌ Client ngắt kết nối: ${socket.id}`);
-  });
+  console.log(`🔌 Client kết nối: ${socket.id}`);
+  
+  socket.on('disconnect', () => {
+    console.log(`❌ Client ngắt kết nối: ${socket.id}`);
+  });
 
-  // === LOGIC CHO ADMIN ===
-  // 1. Khi Admin kết nối, họ phải tham gia vào phòng Admin
-  socket.on('admin:joinRoom', () => {
-      socket.join(ADMIN_ROOM);
-      console.log(`[Admin] Admin ${socket.id} đã tham gia ${ADMIN_ROOM}`);
-  });
+  // Logic Admin Join Room
+  socket.on('admin:joinRoom', () => {
+      socket.join(ADMIN_ROOM);
+      console.log(`[Admin] Admin ${socket.id} đã tham gia ${ADMIN_ROOM}`);
+  });
 
-  // 2. Khi Admin gửi tin nhắn trả lời (BỎ QUA BOT)
-  socket.on('admin:sendMessage', (data) => {
-      // data phải chứa: { 
-      //   targetSocketId: "id_cua_user_can_nhan", 
-      //   message: "noi_dung_tra_loi",
-      //   user: "Ten_Admin_Vi_Du_NgoTrung"
-      // }
-      
-      console.log(`[Admin Chat] Admin ${socket.id} trả lời ${data.targetSocketId}: ${data.message}`);
+  // Logic Admin trả lời tin nhắn
+  socket.on('admin:sendMessage', (data) => {
+      console.log(`[Admin Chat] Admin ${socket.id} trả lời ${data.targetSocketId}: ${data.message}`);
 
-      // Tạo gói tin nhắn để gửi đi
-      const messagePacket = {
-        user: data.user, // Tên Admin (NgoTrung)
-        message: data.message
-      };
+      const messagePacket = {
+        user: data.user, 
+        message: data.message
+      };
 
-      // Gửi tin nhắn này TỚI USER CỤ THỂ
-      io.to(data.targetSocketId).emit('chat:receiveMessage', messagePacket);
-      
-      // Gửi tin nhắn này VÀO PHÒNG ADMIN (để admin thấy tin nhắn của chính mình)
-      io.to(ADMIN_ROOM).emit('chat:receiveMessage', messagePacket);
-  });
-
-
-// Thay thế toàn bộ khối socket.on('user:sendMessage', ...) trong server.js
-
-// === LOGIC CHO USER (ĐI QUA BOT) ===
-socket.on('user:sendMessage', async (data) => {
-    const userMessage = data.message;
-    const sessionId = socket.id;
-    
-    console.log(`[User Chat] Tin nhắn từ ${data.user} (${sessionId}): ${userMessage}`);
-
-    // A. GỬI LẠI TIN NHẮN GỐC CHO CHÍNH USER ĐÓ
-    socket.emit('chat:receiveMessage', data); 
-    
-    // B. GỬI TIN NHẮN CHO BOT (DIALOGFLOW)
-    const botResult = await sendToDialogflow(userMessage, sessionId);
-    const intentName = botResult.intent.displayName;
-    let botReplyMessage = botResult.fulfillmentText; // Câu trả lời mặc định từ Dialogflow
-
-    // C. XỬ LÝ FULFILLMENT (LOGIC NÂNG CAO)
-    if (botResult && botResult.intent && !botResult.intent.isFallback) {
-        
-        switch (intentName) {
-            case 'Kiểm tra trạng thái đơn hàng':
-                {
-                    // Lấy tham số (parameter) là Order ID từ Dialogflow
-                    const orderId = botResult.parameters.fields.order_number?.stringValue;
-                    
-                    if (orderId) {
-                        // Gọi hàm kiểm tra trạng thái đơn hàng
-                        botReplyMessage = getOrderStatus(orderId);
-                    } else {
-                        // Trường hợp này không xảy ra nếu Intent được cấu hình là Required
-                        botReplyMessage = botResult.fulfillmentText;
-                    }
-                }
-                break;
-            
-            case 'Giới thiệu món ăn':
-                // Gọi hàm lấy thực đơn
-                botReplyMessage = getFeaturedMenu();
-                break;
-            
-            default:
-                // Dùng câu trả lời mặc định từ Dialogflow
-                break;
-        }
-
-        const botReply = {
-            user: 'BotNhaHang', 
-            message: botReplyMessage
-        };
-        // Gửi câu trả lời đã được xử lý (Fulfillment) của bot CHO CHÍNH USER ĐÓ
-        socket.emit('chat:receiveMessage', botReply);
-
-    } else {
-        // *** BOT KHÔNG HIỂU (Fallback) HOẶC LỖI ***
-        console.log("Bot không hiểu. Chuyển cho admin.");
-        
-        const fallbackReply = {
-            user: 'BotNhaHang',
-            message: botResult.fulfillmentText || 'Xin lỗi, tôi chưa hiểu. Tôi đã chuyển câu hỏi này tới Admin, bạn vui lòng chờ trong giây lát.'
-        };
-        
-        // Gửi câu trả lời "không hiểu" CHO CHÍNH USER ĐÓ
-        socket.emit('chat:receiveMessage', fallbackReply);
-        
-        // Gửi tin nhắn GỐC của user VÀO PHÒNG ADMIN
-        const dataForAdmin = {
-            ...data,
-            userSocketId: sessionId
-        };
-        io.to(ADMIN_ROOM).emit('chat:needsAdmin', dataForAdmin);
-    }
-});
+      // Gửi tới User
+      io.to(data.targetSocketId).emit('chat:receiveMessage', messagePacket);
+      
+      // Gửi lại vào phòng Admin để hiển thị
+      io.to(ADMIN_ROOM).emit('chat:receiveMessage', messagePacket);
+  });
 });
 
-// === Phục vụ các trang frontend ===
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
 
-// ... (Các route khác giữ nguyên)
+// ============================================================
+// === 8. FRONTEND ROUTES (Giữ nguyên toàn bộ) ===
+// ============================================================
 
-app.get('/register', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'register.html'));
-});
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/order', (req, res) => res.sendFile(path.join(__dirname, 'public', 'order.html')));
 
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
+// Các file mới thêm
+app.get('/order-history.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'order-history.html')));
+app.get('/order-progress.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'order-progress.html')));
+app.get('/admin-ban.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-ban.html')));
+app.get('/admin-zalopay-history.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin-zalopay-history.html')));
+app.get('/gateway-mock.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'gateway-mock.html')));
 
-app.get('/order', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'order.html'));
-});
+app.get('/profile', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
+app.get('/payment-result', (req, res) => res.sendFile(path.join(__dirname, 'public', 'payment-result.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-// (Thêm các route cho file mới)
-app.get('/order-history.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'order-history.html'));
-});
-
-app.get('/order-progress.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'order-progress.html'));
-});
-
-app.get('/admin-ban.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin-ban.html'));
-});
-
-app.get('/admin-zalopay-history.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin-zalopay-history.html'));
-});
-
-app.get('/gateway-mock.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'gateway-mock.html'));
-});
-// (Hết route file mới)
-
-app.get('/profile', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'profile.html'));
-});
-
-app.get('/payment-result', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'payment-result.html'));
-});
-
-// Trang chủ
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// === Bắt tất cả các đường dẫn không xác định ===
+// === 9. Catch-All Route (BẮT BUỘC ĐỂ CUỐI CÙNG) ===
+// Để tránh việc nó chặn mất các API ở trên
 app.get('*', (req, res) => {
-  if (req.url.startsWith('/api')) {
-    return res.status(404).json({ message: `API Endpoint ${req.url} Not Found.` });
-  }
-  res.redirect('/');
+  if (req.url.startsWith('/api')) {
+    return res.status(404).json({ message: `API Endpoint ${req.url} Not Found.` });
+  }
+  res.redirect('/');
 });
 
-// === Khởi chạy server ===
+// === 10. Start Server ===
 server.listen(PORT, () => {
-  console.log(`✅ Server đang chạy tại: http://localhost:${PORT}`);
+  console.log(`✅ Server đang chạy tại: http://localhost:${PORT}`);
 });

@@ -107,6 +107,7 @@
                 </label>
 
                 <label class="payment-method-option" for="pay-zalopay" id="label-zalopay" style="margin-top: 15px;">
+                  
                     <input type="radio" id="pay-zalopay" name="paymentMethodModal" value="zalopay">
                     <div style="flex:1;">
                         <strong>Thanh toán Online ngay (ZaloPay)</strong>
@@ -156,39 +157,57 @@
         function closeTableModal() {
             document.getElementById('tableModal').style.display = 'none';
         }
-        async function loadTableMap() {
-            const mapContainer = document.getElementById('tableMapContainer');
-            mapContainer.innerHTML = '<p>Đang tải sơ đồ bàn...</p>';
-            try {
-                const response = await fetch('/api/ban');
-                if (!response.ok) throw new Error('Không thể tải sơ đồ bàn');
-                const banList = await response.json();
-                mapContainer.innerHTML = '';
-                banList.forEach(ban => {
-                    const tableDiv = document.createElement('div');
-                    tableDiv.className = 'table-item';
-                    tableDiv.id = `ban-${ban._id}`;
-                    tableDiv.dataset.id = ban._id;
-                    tableDiv.textContent = ban.soBan;
-                    if (ban.trangThai === 'Trống') {
-                        tableDiv.classList.add('status-trong');
-                        tableDiv.addEventListener('click', () => selectBan(ban._id, ban.soBan));
-                    } else {
-                        tableDiv.classList.add('status-dang-phuc-vu');
-                        if (ban.soKhach > 0) {
-                            const guestSpan = document.createElement('span');
-                            guestSpan.className = 'guest-count';
-                            guestSpan.textContent = ban.soKhach;
-                            tableDiv.appendChild(guestSpan);
-                        }
-                    }
-                    mapContainer.appendChild(tableDiv);
-                });
-            } catch (err) {
-                console.error(err);
-                mapContainer.innerHTML = `<p style="color:red;">${err.message}</p>`;
+     // --- TRONG FILE order.html (THAY THẾ HÀM loadTableMap CŨ) ---
+async function loadTableMap() {
+    const mapContainer = document.getElementById('tableMapContainer');
+    mapContainer.innerHTML = '<p>Đang tải sơ đồ bàn...</p>';
+    try {
+        const response = await fetch('/api/ban');
+        if (!response.ok) throw new Error('Không thể tải sơ đồ bàn');
+        let banList = await response.json(); // Lấy dữ liệu
+
+        // 👇👇👇 THÊM LOGIC SẮP XẾP VÀO ĐÂY (Sắp xếp theo số) 👇👇👇
+        banList.sort((a, b) => {
+            // Lấy con số trong tên bàn (Ví dụ "Bàn 5" -> lấy số 5)
+            const numA = parseInt(a.soBan.match(/\d+/)?.[0] || 0);
+            const numB = parseInt(b.soBan.match(/\d+/)?.[0] || 0);
+            return numA - numB; // Sắp xếp tăng dần (1, 2, ... 10)
+        });
+        // 👆👆👆 KẾT THÚC LOGIC SẮP XẾP 👆👆👆
+
+
+        mapContainer.innerHTML = ''; // Xóa chữ "Đang tải"
+        
+        banList.forEach(ban => {
+            const tableDiv = document.createElement('div');
+            tableDiv.className = 'table-item';
+            tableDiv.id = `ban-${ban._id}`;
+            tableDiv.dataset.id = ban._id;
+            tableDiv.textContent = ban.soBan;
+            
+            if (ban.trangThai === 'Trống') {
+                tableDiv.classList.add('status-trong');
+                tableDiv.addEventListener('click', () => selectBan(ban._id, ban.soBan));
+            } else {
+                tableDiv.classList.add('status-dang-phuc-vu');
+                // Nếu bàn có khách thì không cho chọn
+                // (Giữ nguyên logic cũ của bạn)
             }
-        }
+            // Thêm số khách (Giữ nguyên logic cũ)
+            if (ban.soKhach > 0) {
+                 const guestSpan = document.createElement('span');
+                 guestSpan.className = 'guest-count';
+                 guestSpan.textContent = ban.soKhach;
+                 tableDiv.appendChild(guestSpan);
+            }
+            
+            mapContainer.appendChild(tableDiv);
+        });
+    } catch (err) {
+        console.error(err);
+        mapContainer.innerHTML = `<p style="color:red;">${err.message}</p>`;
+    }
+}
         function selectBan(banId, soBan) {
             selectedBanId = banId;
             document.getElementById('selectedTableDisplay').value = soBan;
@@ -217,12 +236,17 @@
             closePaymentModal();
         }
 
+        // ==========================================================
+        // 🔥 HÀM MỚI: XỬ LÝ CHỌN THANH TOÁN & HIỆN QR CODE 🔥
+        // (Thay thế đoạn cũ trong order.html)
+        // ==========================================================
         function addPaymentModalListeners() {
             const btnChonThanhToan = document.getElementById('btnChonThanhToan');
             const paymentModal = document.getElementById('paymentModal');
             const closePaymentModalBtn = document.getElementById('closePaymentModal');
             const selectedPaymentInput = document.getElementById('selectedPaymentDisplay');
 
+            // 1. Gắn sự kiện mở/đóng modal
             if(btnChonThanhToan) btnChonThanhToan.addEventListener('click', openPaymentModal);
             if(selectedPaymentInput) selectedPaymentInput.addEventListener('click', openPaymentModal);
             if(closePaymentModalBtn) closePaymentModalBtn.addEventListener('click', closePaymentModal);
@@ -233,25 +257,57 @@
             const inputCod = document.getElementById('pay-cod');
             const inputZalo = document.getElementById('pay-zalopay');
 
+     // 2. Hàm xử lý logic khi chọn phương thức (ĐÃ SỬA LẠI: KHÔNG HIỆN QR NỮA)
+            function handlePaymentSelection(method, text) {
+                // Cập nhật biến toàn cục
+                selectedPaymentMethod = method;
+                
+                // Cập nhật text hiển thị bên ngoài
+                const displayInput = document.getElementById('selectedPaymentDisplay');
+                if(displayInput) displayInput.value = text;
+                
+                const errorMsg = document.getElementById('paymentError');
+                if(errorMsg) errorMsg.style.display = 'none';
+
+                // Đồng bộ nút Radio (đảm bảo nó được check)
+                if (method === 'cod' && inputCod) inputCod.checked = true;
+                if (method === 'zalopay' && inputZalo) inputZalo.checked = true;
+
+                // ❌ ĐÃ XÓA ĐOẠN HIỂN THỊ QR Ở ĐÂY ❌
+                
+                // Tự động đóng modal sau khi chọn cho tiện (Tùy chọn)
+                setTimeout(() => closePaymentModal(), 200); 
+            }
+
+            // 3. Gắn sự kiện Click cho vùng chọn (Label)
             if (labelCod) {
                 labelCod.addEventListener('click', () => {
-                    setTimeout(() => selectPayment('cod', 'Thanh toán tại quầy'), 10);
+                    setTimeout(() => handlePaymentSelection('cod', 'Thanh toán tại quầy'), 10);
                 });
             }
             if (labelZalo) {
                 labelZalo.addEventListener('click', () => {
-                    setTimeout(() => selectPayment('zalopay', 'Thanh toán Online (ZaloPay)'), 10);
+                    setTimeout(() => handlePaymentSelection('zalopay', 'Thanh toán Online (ZaloPay)'), 10);
                 });
             }
 
+            // 4. Gắn sự kiện Change cho nút Radio
             if (inputCod) {
-                inputCod.addEventListener('change', () => { if (inputCod.checked) selectPayment('cod', 'Thanh toán tại quầy'); });
+                inputCod.addEventListener('change', () => { 
+                    if (inputCod.checked) handlePaymentSelection('cod', 'Thanh toán tại quầy'); 
+                });
             }
             if (inputZalo) {
-                inputZalo.addEventListener('change', () => { if (inputZalo.checked) selectPayment('zalopay', 'Thanh toán Online (ZaloPay)'); });
+                inputZalo.addEventListener('change', () => { 
+                    if (inputZalo.checked) handlePaymentSelection('zalopay', 'Thanh toán Online (ZaloPay)'); 
+                });
+            }
+            
+            // 5. Kích hoạt trạng thái mặc định (nếu load trang đã check sẵn)
+            if (inputCod && inputCod.checked) {
+                handlePaymentSelection('cod', 'Thanh toán tại quầy');
             }
         }
-
         // === Hàm chính ===
         function runPageLogic() {
             const cartContainer = document.getElementById("cartContainer");
@@ -380,10 +436,15 @@ if (!response.ok) {
 
 // Nếu là COD -> như cũ
 if (paymentMethod === 'cod') {
-  showToast("✅ Đơn hàng (COD) đã được gửi thành công!");
-  localStorage.removeItem("clientCart");
-  window.location.href = '/order-progress.html';
-  return;
+    showToast("✅ Đơn hàng đã được gửi thành công!");
+    localStorage.removeItem("clientCart");
+    
+    // 👇👇👇 SỬA DÒNG NÀY 👇👇👇
+    // Chuyển hướng kèm theo tham số ?newOrder=...
+    window.location.href = `/order-progress.html?newOrder=${createOrderResult.donHang._id}`;
+    // 👆👆👆 ---------------- 👇👇👇
+    
+    return;
 }
 
 // Nếu là ZaloPay -> gọi API tạo link

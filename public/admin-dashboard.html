@@ -3,60 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang chủ Admin</title>
+    <title>Dashboard Admin - Quản Lý Nhà Hàng</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* CSS để tạo giao diện "Card" cho các link */
-        .admin-dashboard-container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 2rem;
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; }
+        .admin-dashboard-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        
+        /* Tiêu đề */
+        .welcome-section { margin-bottom: 2rem; }
+        .welcome-section h1 { font-size: 1.8rem; color: #333; margin: 0; }
+        .welcome-section p { color: #666; margin-top: 5px; }
+
+        /* 1. KHU VỰC THỐNG KÊ (SỐ LIỆU) */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 5px solid #ddd; transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card h3 { margin: 0 0 10px 0; color: #888; font-size: 0.9rem; text-transform: uppercase; font-weight: 600; }
+        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #333; }
+        
+        .border-blue { border-left-color: #007bff; }
+        .border-green { border-left-color: #28a745; }
+        .border-orange { border-left-color: #fd7e14; }
+        .border-purple { border-left-color: #6f42c1; }
+
+        /* 2. KHU VỰC BIỂU ĐỒ */
+        .charts-section { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 3rem; }
+        .chart-box { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .chart-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 1rem; color: #444; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+
+        /* 3. KHU VỰC ĐIỀU HƯỚNG (NAVIGATE) */
+        .quick-actions h2 { font-size: 1.3rem; color: #333; margin-bottom: 1rem; border-left: 4px solid #ff7043; padding-left: 10px; }
+        .dashboard-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .dashboard-card { 
+            display: block; padding: 1.5rem; background: white; 
+            border: 1px solid #eee; border-radius: 12px; text-decoration: none; color: inherit; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: all 0.2s; 
         }
-        .admin-dashboard-container h1 {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        .admin-dashboard-container > p {
-            font-size: 1.1rem;
-            color: #555;
-            margin-bottom: 2rem;
-        }
-        .dashboard-links {
-            display: grid;
-            /* Tự động chia cột, mỗi cột rộng tối thiểu 300px */
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        .dashboard-card {
-            display: block;
-            padding: 1.5rem 2rem;
-            background-color: #ffffff;
-            border: 1px solid #eee;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            text-decoration: none;
-            color: inherit;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .dashboard-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-        }
-        .dashboard-card h2 {
-            /* Lấy màu cam chính từ style.css của bạn */
-            color: var(--main-color, #f07c56); 
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-top: 0;
-            margin-bottom: 0.5rem;
-        }
-        .dashboard-card p {
-            font-size: 0.95rem;
-            color: #444;
-            line-height: 1.5;
-            margin-bottom: 0;
-        }
+        .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); border-color: #ff7043; }
+        .dashboard-card h3 { color: #ff7043; margin: 0 0 5px 0; font-size: 1.2rem; }
+        .dashboard-card p { color: #666; font-size: 0.95rem; margin: 0; }
+
+        @media (max-width: 900px) { .charts-section { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -64,71 +52,185 @@
     <div id="navbar-placeholder"></div>
 
     <main class="admin-dashboard-container">
-        <h1>Chào mừng Admin!</h1>
-        <p>Chọn một chức năng quản lý để bắt đầu:</p>
         
-        <div class="dashboard-links">
-            
-            <a href="/admin.html" class="dashboard-card">
-                <h2>📋 Quản lý Đơn hàng</h2>
-                <p>Xem, cập nhật trạng thái và xử lý các đơn hàng mới.</p>
-            </a>
-            
-            <a href="/quan-ly-mon-an.html" class="dashboard-card">
-                <h2>🍴 Quản lý Món ăn</h2>
-                <p>Thêm, xóa, và sửa các món ăn trong thực đơn.</p>
-            </a>
+        <div class="welcome-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+    <div>
+        <h1>👋 Xin chào, Admin!</h1>
+        <p>Đây là tình hình kinh doanh của nhà hàng.</p>
+    </div>
+    
+    <div class="date-filter" style="display: flex; gap: 10px; align-items: center;">
+        <label for="statsDate" style="font-weight: bold; color: #555;">Chọn ngày:</label>
+        <input type="date" id="statsDate" style="padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem;">
+        <button onclick="loadRealStats()" style="padding: 8px 15px; background-color: #ff7043; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+            Xem báo cáo
+        </button>
+    </div>
+</div>
 
+        <div class="stats-grid">
+            <div class="stat-card border-blue">
+                <h3>Tổng Doanh Thu</h3>
+                <div class="value">15.500.000đ</div>
             </div>
+            <div class="stat-card border-green">
+                <h3>Đơn Hàng</h3>
+                <div class="value">45 Đơn</div>
+            </div>
+            <div class="stat-card border-orange">
+                <h3>Tiền Mặt</h3>
+                <div class="value">5.500.000đ</div>
+            </div>
+            <div class="stat-card border-purple">
+                <h3>Chuyển Khoản</h3>
+                <div class="value">10.000.000đ</div>
+            </div>
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-box">
+                <div class="chart-title">📈 Doanh thu theo giờ</div>
+                <canvas id="revenueChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">💳 Tỷ lệ thanh toán</div>
+                <canvas id="paymentChart"></canvas>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <h2>🚀 Truy cập nhanh</h2>
+            <div class="dashboard-links">
+                <a href="/admin-donhang.html" class="dashboard-card">
+                    <h3>📋 Quản lý Đơn hàng</h3>
+                    <p>Xem danh sách đơn, lọc theo ngày và trạng thái.</p>
+                </a>
+                <a href="/admin-ban.html" class="dashboard-card">
+                    <h3>🍽️ Sơ đồ Bàn ăn</h3>
+                    <p>Quản lý trạng thái bàn, xếp chỗ và thanh toán tại bàn.</p>
+                </a>
+                <a href="/quan-ly-mon-an.html" class="dashboard-card">
+                    <h3>🍴 Quản lý Món ăn</h3>
+                    <p>Thêm món mới, sửa giá và cập nhật thực đơn.</p>
+                </a>
+            </div>
+        </div>
+
     </main>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            // Lấy thông tin user
-            const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+  <script>
+        let userInfo = null; // Khai báo biến toàn cục để dùng lại
 
-            // Bảo vệ trang: Nếu không phải admin, đá về trang đăng nhập
+        document.addEventListener("DOMContentLoaded", () => {
+            userInfo = JSON.parse(localStorage.getItem("userInfo"));
+            
+            // 1. Kiểm tra quyền Admin
             if (!userInfo || userInfo.role !== 'admin') {
-                alert('Bạn không có quyền truy cập. Vui lòng đăng nhập.');
+                alert('Bạn không có quyền truy cập.');
                 window.location.href = '/login.html';
-                return; // Dừng thực thi code
+                return;
             }
 
-            // Tải file navbar của Admin
-            const navbarFile = '/admin-navbar.html'; 
-
-            fetch(navbarFile)
-                .then(response => {
-                    if (!response.ok) throw new Error('Không tìm thấy file admin-navbar.html');
-                    return response.text();
-                })
+            // 2. Tải Navbar
+            fetch('/admin-navbar.html')
+                .then(r => r.text())
                 .then(data => {
-                    // 1. Gắn HTML của navbar vào "chỗ giữ"
-                    const placeholder = document.getElementById('navbar-placeholder');
-                    if (placeholder) {
-                        placeholder.innerHTML = data;
-                    }
-
-                    // 2. Kích hoạt nút "Đăng xuất" (RẤT QUAN TRỌNG)
+                    document.getElementById('navbar-placeholder').innerHTML = data;
+                    // Xử lý nút đăng xuất (nếu navbar chưa tự xử lý)
                     const authButton = document.getElementById('authButton');
                     if (authButton) {
-                        authButton.textContent = 'Đăng xuất';
+                        authButton.textContent = `Đăng xuất (${userInfo.username})`;
                         authButton.addEventListener('click', () => {
-                            // Xóa thông tin đăng nhập
-                            localStorage.removeItem('userInfo');
-                            // Quay về trang chủ
-                            window.location.href = '/index.html'; 
+                            localStorage.clear();
+                            window.location.href = '/index.html';
                         });
                     }
-                })
-                .catch(err => {
-                    console.error('Lỗi tải navbar:', err);
-                    const placeholder = document.getElementById('navbar-placeholder');
-                    if (placeholder) {
-                        placeholder.innerHTML = '<p style="color:red; text-align:center;">Lỗi tải menu admin.</p>';
-                    }
                 });
+         // 3. Đặt giá trị mặc định cho ô ngày là "Hôm nay"
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('statsDate').value = today;    
+
+            // 4. GỌI HÀM LẤY SỐ LIỆU THẬT (Thay vì vẽ luôn)
+            loadRealStats();
         });
+
+      async function loadRealStats() {
+    try {
+        // 1. Lấy ngày người dùng chọn
+        const dateInput = document.getElementById('statsDate').value;
+        
+        // 2. Tạo URL có chứa tham số ngày (Query Param)
+        let url = '/api/donhang/stats/daily';
+        if (dateInput) {
+            url += `?date=${dateInput}`;
+        }
+
+        // 3. Gọi API
+        const res = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${userInfo.token}` }
+        });
+        const result = await res.json();
+
+        if (!result.success) throw new Error(result.message || 'Lỗi tải thống kê');
+        
+        const data = result.data;
+
+        // ... (Phần hiển thị số liệu và vẽ biểu đồ GIỮ NGUYÊN không đổi) ...
+        document.querySelector('.stat-card.border-blue .value').innerText = (data.totalRevenue || 0).toLocaleString('vi-VN') + 'đ';
+        document.querySelector('.stat-card.border-green .value').innerText = (data.totalOrders || 0) + ' Đơn';
+        document.querySelector('.stat-card.border-orange .value').innerText = (data.cashRevenue || 0).toLocaleString('vi-VN') + 'đ';
+        document.querySelector('.stat-card.border-purple .value').innerText = (data.onlineRevenue || 0).toLocaleString('vi-VN') + 'đ';
+
+        // Gọi hàm vẽ (Nếu biểu đồ đã có thì destroy đi vẽ lại để tránh bị chồng hình)
+        renderRealCharts(data);
+
+    } catch (err) {
+        console.error("Lỗi thống kê:", err);
+        alert("Không thể tải dữ liệu: " + err.message);
+    }
+}
+
+// Lưu ý: Bạn cần sửa nhẹ hàm renderRealCharts để hủy biểu đồ cũ trước khi vẽ mới
+let revenueChartInstance = null;
+let paymentChartInstance = null;
+
+function renderRealCharts(data) {
+    const ctxLine = document.getElementById('revenueChart').getContext('2d');
+    const ctxPie = document.getElementById('paymentChart').getContext('2d');
+
+    // Hủy biểu đồ cũ nếu tồn tại (để khi chọn ngày khác nó vẽ lại)
+    if (revenueChartInstance) revenueChartInstance.destroy();
+    if (paymentChartInstance) paymentChartInstance.destroy();
+
+    // Vẽ biểu đồ đường
+    revenueChartInstance = new Chart(ctxLine, {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => `${i}h`),
+            datasets: [{
+                label: 'Doanh thu (VNĐ)',
+                data: data.hourlyRevenue,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Vẽ biểu đồ tròn
+    paymentChartInstance = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+            labels: ['Tiền mặt', 'Chuyển khoản'],
+            datasets: [{
+                data: [data.cashRevenue, data.onlineRevenue],
+                backgroundColor: ['#fd7e14', '#6f42c1']
+            }]
+        }
+    });
+}
     </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // File: routes/banRoutes.js
 const express = require('express');
 const router = express.Router();
-
+const banController = require('../controllers/banController');
 // 1. Import Model, Controller và Middleware
 const Ban = require('../models/ban');
 const {
@@ -15,7 +15,7 @@ const { protect, isAdmin } = require('../middleware/authMiddleware'); // <-- Imp
 
 // Lấy danh sách tất cả bàn (cho sơ đồ) - Ai cũng xem được
 router.get('/', getAllBan);
-
+router.get('/reset-system-now', banController.resetAllTables);
 // Admin trả bàn (thanh toán) - Chỉ Admin
 router.patch('/:id/release', protect, isAdmin, releaseBan);
 

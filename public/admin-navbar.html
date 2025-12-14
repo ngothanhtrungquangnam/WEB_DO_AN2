@@ -2,36 +2,50 @@
     <div class="logo">🍜 Quản lý quán ăn</div>
     <nav class="nav-links">
         <a href="index.html">Trang chủ</a>
-        <a href="order.html" id="nav-order-link" style="display: none;">Đặt món</a>
-        <a href="admin.html" id="nav-admin-link" style="display: none;">Quản lý đơn</a>
+        <a href="admin.html" id="nav-admin-link">Quản lý đơn</a>
         <a class="nav-link" id="nav-table-link" href="admin-ban.html">Quản lý bàn</a>
-        
-        <div class="dropdown" id="utilityDropdown" style="display: none;">
+        <a href="/admin-dashboard.html" id="nav-stats-link" >Thống kê </a>
+
+        <div class="dropdown" id="utilityDropdown">
             <button class="dropbtn">Tiện ích</button>
             <div class="dropdown-content">
                 <a href="profile.html">👤 Thông tin </a>
-             <a href="/admin-zalopay-history.html">📜 Lịch sử chuyển khoản </a>
+                <a href="/admin-zalopay-history.html">📜 Lịch sử chuyển khoản </a>
                 <a href="/quan-ly-mon-an.html">🍴 Quản lý món ăn</a>
             </div>
         </div>
     </nav>
+
     <div class="header-actions">
         <button class="btn" id="authButton" style="width: auto; padding: 8px 16px;">Đăng nhập</button>
-        <script>
-            // Script này chỉ chạy khi header được tải vào trang
-            // Nó xử lý trường hợp người dùng chưa đăng nhập mà bấm vào
-            document.addEventListener('DOMContentLoaded', () => {
-                // Chúng ta gán sự kiện này ở script chính của trang,
-                // nhưng để đây dự phòng cho nút bấm
-                const authButton = document.getElementById('authButton');
-                if (authButton && authButton.textContent === 'Đăng nhập') {
-                    authButton.addEventListener("click", () => {
-                        localStorage.clear();
-                        window.location.href = '/login.html';
-                    });
-                }
-            });
-        </script>
-        <button class="dark-toggle">🌙</button>
+       
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+            const authButton = document.getElementById('authButton');
+
+            // 1. Xử lý nút Đăng nhập
+            if (userInfo && userInfo.username) {
+                authButton.textContent = `Đăng xuất (${userInfo.username})`;
+                authButton.addEventListener("click", () => {
+                    localStorage.clear();
+                    window.location.href = '/index.html';
+                });
+            } else {
+                authButton.textContent = 'Đăng nhập';
+                authButton.addEventListener("click", () => { window.location.href = '/login.html'; });
+            }
+
+            // 2. Nếu KHÔNG PHẢI ADMIN thì mới ẩn các nút đi
+            if (!userInfo || userInfo.role !== 'admin') {
+                const adminIds = ['nav-order-link', 'nav-admin-link', 'nav-table-link', 'nav-stats-link', 'utilityDropdown'];
+                adminIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.style.display = 'none';
+                });
+            }
+        });
+    </script>
 </header>

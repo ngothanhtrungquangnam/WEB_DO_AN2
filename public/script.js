@@ -1,6 +1,28 @@
 // File: public/script.js --- PHIÊN BẢN HOÀN CHỈNH (ĐÃ SỬA LỖI LỌC) ---
 // File: script.js
+  // Hàm hiển thị Modal/Form Bắt buộc thiết lập mật khẩu
+window.showPasswordSetupModal = function(userId, email, token) {
+    // 1. Lưu tạm dữ liệu cần thiết
+    localStorage.setItem('tempSocialUserId', userId);
+    localStorage.setItem('tempSocialToken', token);
+    localStorage.setItem('tempSocialEmail', email);
 
+    // 2. Chuyển hướng/Hiện modal
+    // Tạo một modal/div mới trong index.html với id="password-setup-modal"
+    const setupModal = document.getElementById('password-setup-modal');
+    if (setupModal) {
+        // Nếu dùng Modal: Hiển thị Modal yêu cầu người dùng nhập mật khẩu mới
+        setupModal.style.display = 'flex'; 
+        alert(`Chào mừng! Vui lòng thiết lập mật khẩu để bảo mật tài khoản ${email}.`);
+    } else {
+        // Nếu chưa kịp tạo Modal, chuyển hướng sang trang setup riêng
+        // window.location.href = '/setup-password.html'; // Tùy chọn
+        
+        // TẠM THỜI: Hiện alert báo lỗi để biết cần tạo Modal
+        console.error("Thiếu Modal thiết lập mật khẩu!");
+        alert("Lỗi: Không tìm thấy giao diện thiết lập mật khẩu. Vui lòng thử lại sau.");
+    }
+}
 // TÀI KHOẢN MÔ PHỎNG (Giả lập database)
 const MOCK_USERS = {
     "admin": { password: "admin", role: "admin" },
@@ -27,27 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- LẤY THÔNG TIN USER TỪ LOCALSTORAGE ---
     const userInfo = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
 
-    // =============================================
-    // CHỨC NĂNG CHUNG: DARK MODE
-    // =============================================
-    if (darkToggle) {
-        function setTheme(isDark) {
-            if (isDark) {
-                document.body.classList.add("dark");
-                darkToggle.textContent = "☀️";
-                localStorage.setItem("theme", "dark");
-            } else {
-                document.body.classList.remove("dark");
-                darkToggle.textContent = "🌙";
-                localStorage.setItem("theme", "light");
-            }
-        }
-        const savedTheme = localStorage.getItem("theme");
-        setTheme(savedTheme === "dark");
-        darkToggle.addEventListener('click', () => {
-            setTheme(!document.body.classList.contains('dark'));
-        });
-    }
+   
 
     // =============================================
     // CHỨC NĂNG CHUNG: NAVBAR AUTHENTICATION
@@ -57,11 +59,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (userInfo) {
             authButton.innerHTML = `<i class="bi bi-box-arrow-right"></i> Đăng xuất (${userInfo.username})`;
-            authButton.onclick = () => {
-                localStorage.removeItem('userInfo'); 
-                alert('Bạn đã đăng xuất.');
-                window.location.href = '/login.html'; 
-            };
+      authButton.onclick = () => {
+    // 👇 --- CODE THÊM MỚI --- 👇
+    try {
+        const rawData = localStorage.getItem('userInfo');
+        if (rawData) {
+            const data = JSON.parse(rawData);
+            const userId = data.userId || data._id || data.id; 
+            if (userId) localStorage.removeItem(`chatHistory_${userId}`);
+        }
+    } catch (e) { console.error(e); }
+    // 👆 --- KẾT THÚC --- 👆
+
+    localStorage.removeItem('userInfo'); 
+    alert('Bạn đã đăng xuất.');
+    window.location.href = '/login.html'; 
+};
             if (userInfo.role === 'admin' && adminLinks) {
                 adminLinks.style.display = 'inline'; 
             } else if (adminLinks) {
@@ -439,6 +452,65 @@ window.submitClientOrder = async function() {
     }
 }
 
+
+// ==========================================================
+// 🔥 XỬ LÝ SUBMIT FORM THIẾT LẬP MẬT KHẨU (TỪ MODAL) 🔥
+// ==========================================================
+window.submitPasswordSetup = async function() {
+    const newPassword = document.getElementById('setup-password-input').value;
+    const confirmPassword = document.getElementById('setup-confirm-input').value;
+
+    if (!newPassword || newPassword.length < 6) {
+        return alert("Mật khẩu phải có ít nhất 6 ký tự.");
+    }
+    if (newPassword !== confirmPassword) {
+        return alert("Mật khẩu xác nhận không khớp.");
+    }
+
+    // Lấy thông tin đã lưu tạm khi đăng ký Social
+    const userId = localStorage.getItem('tempSocialUserId');
+    const token = localStorage.getItem('tempSocialToken');
+    
+    if (!userId || !token) {
+        return alert("Lỗi phiên: Vui lòng đăng nhập lại bằng Google/SĐT.");
+    }
+
+    try {
+        const response = await fetch('/api/auth/set-initial-password', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // Có thể cần Token cho bảo mật
+            },
+            body: JSON.stringify({ userId, newPassword })
+        });
+        
+        const data = await response.json();
+
+        if (response.ok) {
+            alert("Thiết lập mật khẩu thành công! Bạn có thể đăng nhập thủ công ngay bây giờ.");
+            
+            // Dọn dẹp dữ liệu tạm và tải lại trang để hoàn tất đăng nhập
+            localStorage.removeItem('tempSocialUserId');
+            localStorage.removeItem('tempSocialToken');
+            localStorage.removeItem('tempSocialEmail');
+            
+            // Ẩn modal
+            const setupModal = document.getElementById('password-setup-modal');
+            if (setupModal) setupModal.style.display = 'none';
+
+            // Chuyển về trang chủ hoặc tải lại navbar
+            window.location.href = '/index.html'; 
+            
+        } else {
+            alert("Lỗi Server khi thiết lập mật khẩu: " + (data.message || "Thất bại."));
+        }
+    } catch (error) {
+        console.error("Lỗi gọi API thiết lập mật khẩu:", error);
+        alert("Lỗi kết nối Server.");
+    }
+}
+
 window.updateOrderStatusAdmin = async function(orderId, newStatus) {
      const userInfo = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
      if (!userInfo || !userInfo.token) return alert('Vui lòng đăng nhập lại.');
@@ -505,100 +577,7 @@ window.editMenuItem = function(id, name, price, image, category) {
      
      addItemForm.scrollIntoView({ behavior: 'smooth' });
 }
-// --- Xử lý mở / đóng modal đăng nhập ---
-const authButton = document.getElementById('authButton');
-const loginModal = document.getElementById('loginModal');
-const modalClose = document.getElementById('modalClose');
 
-if (authButton && loginModal && modalClose) {
-    // Khi nhấn nút "Đăng nhập"
-    authButton.addEventListener('click', () => {
-        loginModal.style.display = 'flex';
-    });
-
-    // Khi nhấn nút đóng (x)
-    modalClose.addEventListener('click', () => {
-        loginModal.style.display = 'none';
-    });
-
-    // Khi click ra ngoài modal
-    window.addEventListener('click', (e) => {
-        if (e.target === loginModal) {
-            loginModal.style.display = 'none';
-        }
-    });
-            
-}
-document.addEventListener("DOMContentLoaded", () => {
-  const loginModal = document.getElementById("loginModal");
-  const authButton = document.getElementById("authButton");
-// =============================================
-    // CHỨC NĂNG CHUNG: XÁC THỰC & NAVBAR
-    // =============================================
-    function checkLoginStatus() {
-        // Lấy thông tin user từ localStorage
-        const userInfo = JSON.parse(localStorage.getItem("userInfo")); 
-
-        if (userInfo) {
-            // === ĐÃ ĐĂNG NHẬP ===
-            // 1. Đổi chữ nút thành "Đăng xuất"
-            if(authButton) authButton.textContent = `Đăng xuất (${userInfo.username})`;
-            
-            // 2. Hiện các link (Đặt món, Quản lý)
-            if (navOrderLink) navOrderLink.style.display = 'inline-block';
-            if (userInfo.role === 'admin') {
-                if (navAdminLink) navAdminLink.style.display = 'inline-block';
-                if (navMenuAdminLink) navMenuAdminLink.style.display = 'inline-block';
-            } else {
-                if (navAdminLink) navAdminLink.style.display = 'none';
-                if (navMenuAdminLink) navMenuAdminLink.style.display = 'none';
-            }
-        } else {
-            // === CHƯA ĐĂNG NHẬP ===
-            // 1. Nút hiển thị là "Đăng nhập"
-            if(authButton) authButton.textContent = 'Đăng nhập';
-            
-            // 2. Ẩn các link
-            if (navOrderLink) navOrderLink.style.display = 'none';
-            if (navAdminLink) navAdminLink.style.display = 'none';
-            if (navMenuAdminLink) navMenuAdminLink.style.display = 'none';
-        }
-    }
-  // Gắn sự kiện cho nút Đăng nhập / Đăng xuất chính
-    if (authButton) {
-        authButton.addEventListener('click', () => {
-            // Lấy trạng thái đăng nhập MỚI NHẤT
-            const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-            if (userInfo) {
-                // TRƯỜNG HỢP 1: NÚT ĐANG HIỂN THỊ "ĐĂNG XUẤT"
-                // -> Thực hiện logic ĐĂNG XUẤT
-                if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-                    localStorage.removeItem('userInfo'); // Xóa "vé"
-                    checkLoginStatus(); // Cập nhật lại Navbar (đổi thành nút "Đăng nhập")
-                    alert('Đã đăng xuất.');
-                    location.reload(); // Tải lại trang
-                }
-            } else {
-                // TRƯỜNG HỢP 2: NÚT ĐANG HIỂN THỊ "ĐĂNG NHẬP"
-                // -> Thực hiện logic ĐĂNG NHẬP (Mở Modal)
-                if (loginModal) {
-                    loginModal.style.display = 'block';
-                }
-            }
-        });
-    }
-
-  // Đóng modal khi bấm ra ngoài
-  window.addEventListener("click", (event) => {
-    if (event.target === loginModal) {
-      loginModal.style.display = "none";
-    }
-  });
-});
-
-function closeModal() {
-  document.getElementById("loginModal").style.display = "none";
-}
 function addToClientCart(id) {
     const userInfo = JSON.parse(localStorage.getItem("userInfo"));
     if (!userInfo || userInfo.role !== "user") {
@@ -638,9 +617,557 @@ function showToast(message) {
     toast.classList.remove("show");
   }, 2000);
 }
+// ==========================================================
+// 🔥 CẬP NHẬT ẢNH QR THEO NGÂN HÀNG (MỚI THÊM) 🔥
+// ==========================================================
+async function updateQrPaymentImage() {
+    // Tìm thẻ ảnh QR trong giao diện (Bạn cần chắc chắn ID này đúng với HTML)
+    const qrImg = document.getElementById('checkout-qr-img'); 
+    const bankLabel = document.getElementById('checkout-bank-name');
+
+    if (!qrImg) return; // Nếu không có ảnh thì bỏ qua
+
+    try {
+        // 1. Gọi API hỏi Server xem đang dùng MB hay BIDV
+        const res = await fetch('/api/payment/current-bank');
+        const data = await res.json();
+
+        if (data.success && data.bankInfo) {
+            const bank = data.bankInfo;
+            
+            // 2. Tạo link VietQR động
+            // Cú pháp: https://img.vietqr.io/image/<BANK_ID>-<ACCOUNT_NO>-<TEMPLATE>.png
+            const qrUrl = `https://img.vietqr.io/image/${bank.BANK_ID}-${bank.ACCOUNT_NO}-${bank.TEMPLATE}.png`;
+            
+            // 3. Cập nhật giao diện
+            qrImg.src = qrUrl;
+            
+            if (bankLabel) {
+                bankLabel.innerText = `Ngân hàng: ${bank.BANK_ID} - ${bank.ACCOUNT_NAME}`;
+            }
+            
+            console.log("✅ Đã cập nhật ảnh QR sang:", bank.BANK_ID);
+        }
+    } catch (e) {
+        console.error("Lỗi cập nhật ảnh QR:", e);
+    }
+}
+
+// Gọi hàm này ngay khi trang web tải xong
+    updateQrPaymentImage();
+
+// ==========================================================
+// 🔥 LOGIC MODAL ĐĂNG NHẬP / ĐĂNG KÝ (FIX LỖI NAVBAR ĐỘNG) 🔥
+// ==========================================================
+
+    // 1. KHAI BÁO BIẾN UI
+    const container = document.getElementById('auth-container');
+    const authModal = document.getElementById('auth-modal');
+    
+    // 2. XỬ LÝ HIỆU ỨNG TRƯỢT (Nút trong Modal)
+    const signUpBtn = document.getElementById('signUpBtn');
+    const signInBtn = document.getElementById('signInBtn');
+
+    if(signUpBtn && signInBtn && container) {
+        signUpBtn.addEventListener('click', () => container.classList.add("right-panel-active"));
+        signInBtn.addEventListener('click', () => container.classList.remove("right-panel-active"));
+    }
+// ==========================================================
+// 🔥 1. XỬ LÝ KẾT QUẢ FIREBASE REDIRECT (GOOGLE) 🔥 (ĐÃ SỬA LỖI TIMING)
+// ==========================================================
+
+// === KẾT THÚC LOGIC REDIRECT ===
+
+    // === KẾT THÚC LOGIC REDIRECT ===
+    // 3. XỬ LÝ CLICK NÚT ĐĂNG NHẬP TRÊN NAVBAR (QUAN TRỌNG NHẤT)
+    // Dùng document.addEventListener để bắt sự kiện kể cả khi nút chưa tải xong
+    document.addEventListener('click', (e) => {
+        // Kiểm tra xem người dùng có bấm vào nút có ID là 'authButton' không?
+        const navAuthBtn = e.target.closest('#authButton');
+
+        if (navAuthBtn) {
+            e.preventDefault(); // 🛑 CHẶN CHUYỂN TRANG
+            
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            
+            if(userInfo) {
+                // NẾU ĐANG CÓ USER -> HỎI ĐĂNG XUẤT
+                if(confirm(`Chào ${userInfo.username}, bạn muốn đăng xuất?`)) {
+                    localStorage.removeItem('userInfo');
+                    if (userInfo.userId) localStorage.removeItem(`chatHistory_${userInfo.userId}`);
+                    window.location.reload(); 
+                }
+            } else {
+               // NẾU CHƯA CÓ USER -> BẬT MODAL, LUÔN CHUYỂN VỀ FORM ĐĂNG KÝ
+if(authModal) {
+    authModal.style.display = 'flex';
+    // ✅ THAY ĐỔI: Luôn chuyển sang form Đăng ký (right-panel-active) khi người dùng bấm nút đăng nhập lần đầu.
+    if(container) container.classList.add("right-panel-active"); 
+}
+            }
+        }
+
+        // Xử lý nút đóng Modal (nút X)
+        if (e.target.closest('#close-auth-modal')) {
+            if(authModal) authModal.style.display = 'none';
+        }
+
+        // Đóng khi click ra vùng đen
+        if (e.target === authModal) {
+            authModal.style.display = 'none';
+        }
+    });
+
+    // ============================================================
+// 4. LOGIC ĐĂNG KÝ (CÓ LOG KIỂM TRA LỖI)
+// ============================================================
+const formSignup = document.getElementById('form-signup');
+if (formSignup) {
+    formSignup.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('signup-email').value.trim();
+        const password = document.getElementById('signup-password').value;
+        const confirmPass = document.getElementById('signup-confirm').value;
+
+        if (password !== confirmPass) { alert("❌ Mật khẩu không khớp!"); return; }
+
+        console.log("🚀 Đang gửi yêu cầu ĐĂNG KÝ lên Server..."); // LOG 1
+
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, role: 'user' })
+            });
+
+            const data = await res.json();
+            console.log("📩 Server trả về (Đăng ký):", data); // LOG 2: Xem Server trả về gì
+
+            if (res.ok) {
+                alert("✅ Đăng ký thành công! Hãy đăng nhập.");
+                if (container) container.classList.remove("right-panel-active");
+                const loginInput = document.getElementById('login-username');
+                if (loginInput) loginInput.value = email;
+            } else {
+                // 🔥 NẾU LỖI, NÓ SẼ CHẠY VÀO ĐÂY
+                console.warn("⚠️ Phát hiện lỗi Đăng ký. Message từ server:", data.message); // LOG 3
+                
+                // Ưu tiên hiển thị message từ Server
+                const msg = data.message || "Lỗi đăng ký không xác định";
+                alert("⚠️ THÔNG BÁO: " + msg);
+            }
+        } catch (err) {
+            console.error("❌ Lỗi mạng hoặc code JS:", err);
+            alert("❌ Lỗi kết nối Server.");
+        }
+    });
+}
+
+// ============================================================
+// 5. LOGIC ĐĂNG NHẬP (CÓ LOG KIỂM TRA LỖI)
+// ============================================================
+const formLogin = document.getElementById('form-login');
+if (formLogin) {
+    formLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+
+        console.log("🚀 Đang gửi yêu cầu ĐĂNG NHẬP lên Server...", username); // LOG 1
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: username, password: password })
+            });
+
+            const data = await res.json();
+            console.log("📩 Server trả về (Đăng nhập):", data); // LOG 2: Xem Server trả về gì
+
+            if (res.ok) {
+                localStorage.setItem('userInfo', JSON.stringify({
+                    token: data.token, userId: data.userId, username: data.username || username, role: data.role
+                }));
+                alert(`🎉 Chào mừng quay trở lại!`);
+                if (authModal) authModal.style.display = 'none';
+                if (data.role === 'admin') window.location.href = '/admin.html';
+                else location.reload();
+            } else {
+                // 🔥 NẾU LỖI, NÓ SẼ CHẠY VÀO ĐÂY
+                console.warn("⚠️ Phát hiện lỗi Đăng nhập. Message từ server:", data.message); // LOG 3
+                
+                // Ưu tiên hiển thị message từ Server
+                const msg = data.message || "Sai thông tin đăng nhập";
+                alert("⚠️ THÔNG BÁO: " + msg);
+            }
+        } catch (err) {
+            console.error("❌ Lỗi mạng hoặc code JS:", err);
+            alert("❌ Lỗi kết nối Server.");
+        }
+    });
+}
+    // ==========================================================
+// 🔥 XỬ LÝ ĐĂNG NHẬP SỐ ĐIỆN THOẠI (FIX LỖI CLICK) 🔥
+// ==========================================================
+
+// Biến toàn cục lưu kết quả xác thực
+let confirmationResult = null;
+
+// 1. Hàm khởi tạo Recaptcha (Chỉ chạy khi cần)
+const setupRecaptcha = () => {
+    // Kiểm tra xem Firebase đã tải chưa
+    if (!window.RecaptchaVerifier || !window.firebaseAuth) {
+        console.error("Firebase chưa tải xong. Hãy kiểm tra lại mạng hoặc file index.html");
+        alert("Lỗi: Thư viện Firebase chưa sẵn sàng.");
+        return;
+    }
+
+    // Nếu chưa có recaptcha thì tạo mới
+    if (!window.recaptchaVerifier) {
+        try {
+            window.recaptchaVerifier = new window.RecaptchaVerifier(window.firebaseAuth, 'recaptcha-container', {
+                'size': 'normal', 
+                'callback': (response) => {
+                    console.log("Recaptcha đã xác thực thành công!");
+                },
+                'expired-callback': () => {
+                    console.log("Recaptcha hết hạn, vui lòng refresh");
+                }
+            });
+            window.recaptchaVerifier.render().then(widgetId => {
+                window.recaptchaWidgetId = widgetId;
+            });
+        } catch (e) {
+            console.error("Lỗi tạo Recaptcha:", e);
+        }
+    }
+};
+
+// 2. LẮNG NGHE SỰ KIỆN CLICK (Dùng Event Delegation cho chắc ăn)
+document.addEventListener('click', async (e) => {
+    
+    // --- A. KHI BẤM NÚT ICON ĐIỆN THOẠI ---
+    const btnPhone = e.target.closest('.social.phone'); // Tìm nút có class .social.phone
+    if (btnPhone) {
+        e.preventDefault();
+        console.log("Đã bấm nút điện thoại!");
+
+        const phoneForm = document.getElementById('phone-login-form');
+        if (phoneForm) {
+            phoneForm.style.display = 'flex'; // Hiện form
+            // Ẩn các form cũ đi cho đỡ rối (nếu cần)
+            // setTimeout(() => setupRecaptcha(), 500); // Đợi form hiện rồi mới vẽ Recaptcha
+            setupRecaptcha();
+        } else {
+            alert("Lỗi: Không tìm thấy khung đăng nhập SĐT (thiếu HTML id='phone-login-form')");
+        }
+    }
+
+   // --- B. KHI BẤM NÚT "GỬI MÃ OTP" ---
+    if (e.target.id === 'btn-send-otp') {
+        let phoneNumber = document.getElementById('phone-number-input').value.trim();
+        
+        // 👇 TỰ ĐỘNG SỬA LỖI NHẬP SỐ ĐIỆN THOẠI 👇
+        if (phoneNumber.startsWith('0')) {
+            // Nếu nhập 09xx -> đổi thành +849xx
+            phoneNumber = '+84' + phoneNumber.slice(1);
+        } else if (!phoneNumber.startsWith('+')) {
+            // Nếu nhập 84xx (thiếu dấu +) -> thêm dấu +
+            phoneNumber = '+' + phoneNumber;
+        }
+        
+        console.log("Số điện thoại gửi đi:", phoneNumber); // Kiểm tra log xem đúng dạng +84... chưa
+
+        if (!phoneNumber) return alert("Vui lòng nhập số điện thoại!");
+        try {
+            if (!window.signInWithPhoneNumber) throw new Error("Hàm signInWithPhoneNumber chưa được load");
+            
+            const appVerifier = window.recaptchaVerifier;
+            
+            // Gọi Firebase gửi tin nhắn
+            confirmationResult = await window.signInWithPhoneNumber(window.firebaseAuth, phoneNumber, appVerifier);
+            
+            alert(`✅ Đã gửi mã OTP đến ${phoneNumber}`);
+            
+            // Chuyển sang giao diện nhập mã
+            document.getElementById('step-1-phone').style.display = 'none';
+            document.getElementById('step-2-otp').style.display = 'block';
+            
+        } catch (error) {
+            console.error("Lỗi gửi SMS:", error);
+            alert("Gửi mã thất bại: " + error.message);
+            if(window.recaptchaVerifier) window.recaptchaVerifier.clear();
+        }
+    }
+
+   // --- C. KHI BẤM NÚT "XÁC THỰC" (OTP) ---
+if (e.target.id === 'btn-verify-otp') {
+    const code = document.getElementById('otp-input').value.trim();
+    if (!code) return alert("Vui lòng nhập mã OTP!");
+
+    try {
+        const result = await confirmationResult.confirm(code);
+        const user = result.user;
+        console.log("Xác thực OTP thành công:", user);
+
+        // 🔥 BƯỚC 1: XÁC ĐỊNH ĐANG Ở FORM NÀO
+        const container = document.getElementById('auth-container');
+        const isRegisterMode = container ? container.classList.contains("right-panel-active") : false;
+        const actionType = isRegisterMode ? 'register' : 'login';
+
+        console.log(`✅ Phone OK. Đang gửi về Server với chế độ: ${actionType}`);
+
+        // 🔥 BƯỚC 2: GỌI API VỚI actionType
+        const res = await fetch('/api/auth/social-register', { // Luôn dùng endpoint này
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                // Email giả lập từ SĐT
+                email: user.phoneNumber.replace('+', '') + "@phone.login", 
+                name: "Khách hàng " + user.phoneNumber.slice(-4),
+                photo: "",
+                provider: "phone",
+                uid: user.uid,
+                phoneNumber: user.phoneNumber,
+                actionType: actionType // <-- GỬI CÁI NÀY ĐI
+            })
+        });
+
+        const data = await res.json();
+
+        // 🔥 BƯỚC 3: XỬ LÝ PHẢN HỒI
+        if (res.ok) {
+            localStorage.setItem('userInfo', JSON.stringify({
+                token: data.token, userId: data.userId, username: data.username, role: data.role
+            }));
+            
+            if (data.message === 'Đăng ký thành công') { 
+                const authModal = document.getElementById('auth-modal');
+                if (authModal) authModal.style.display = 'none';
+                window.showPasswordSetupModal(data.userId, data.email, data.token);
+            } else {
+                alert("🎉 Đăng nhập thành công!");
+                location.reload();
+            }
+        } else {
+            // Hiển thị thông báo lỗi từ Server (Đúng câu bạn muốn)
+            alert("⚠️ Thông báo: " + (data.message || "Lỗi Server"));
+        }
+
+    } catch (error) {
+        console.error("Lỗi xác thực:", error);
+        alert("Mã OTP không đúng hoặc đã hết hạn!");
+    }
+}
+
+    // --- D. KHI BẤM NÚT QUAY LẠI ---
+    if (e.target.closest('#back-to-email')) {
+        document.getElementById('phone-login-form').style.display = 'none';
+        // Reset trạng thái
+        document.getElementById('step-1-phone').style.display = 'block';
+        document.getElementById('step-2-otp').style.display = 'none';
+    }
+
+// --- E. KHI BẤM NÚT GOOGLE ---
+if (e.target.closest('.social.google')) {
+    e.preventDefault();
+    console.log("Đã bấm nút Google!");
+
+    // 🔥 BƯỚC 1: XÁC ĐỊNH ĐANG Ở FORM NÀO
+    const container = document.getElementById('auth-container');
+    // Nếu container có class 'right-panel-active' -> Form Đăng Ký đang hiện
+    const isRegisterMode = container ? container.classList.contains("right-panel-active") : false;
+    const actionType = isRegisterMode ? 'register' : 'login';
+
+    try {
+        if (!window.GoogleAuthProvider || !window.signInWithPopup) {
+             throw new Error("Firebase chưa sẵn sàng.");
+        }
+        
+        const provider = new window.GoogleAuthProvider();
+        const result = await window.signInWithPopup(window.firebaseAuth, provider);
+        const user = result.user;
+        
+        console.log(`✅ Google OK. Đang gửi về Server với chế độ: ${actionType}`);
+
+        // 🔥 BƯỚC 2: GỌI API VỚI actionType
+        const res = await fetch('/api/auth/social-register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                email: user.email,
+                name: user.displayName,
+                photo: user.photoURL,
+                provider: 'google',
+                uid: user.uid,
+                actionType: actionType // <-- GỬI CÁI NÀY ĐI
+            })
+        });
+
+        const data = await res.json();
+        
+        // 🔥 BƯỚC 3: XỬ LÝ PHẢN HỒI
+        if (res.ok) {
+            localStorage.setItem('userInfo', JSON.stringify({
+                token: data.token, userId: data.userId, username: data.username, role: data.role, avatar: data.avatar
+            }));
+            
+            if (data.message === 'Đăng ký thành công') { 
+                 const authModal = document.getElementById('auth-modal');
+                 if (authModal) authModal.style.display = 'none';
+                 window.showPasswordSetupModal(data.userId, data.email, data.token); 
+            } else {
+                 alert(`🎉 Chào mừng ${data.username}!`);
+                 window.location.href = '/index.html'; 
+            }
+        } else {
+            // Hiển thị thông báo lỗi từ Server (Đúng câu bạn muốn)
+            alert("⚠️ Thông báo: " + (data.message || "Thất bại"));
+        }
+        
+    } catch (err) {
+        console.error("❌ Lỗi Google:", err);
+        if (err.code !== 'auth/popup-closed-by-user') {
+            alert("Lỗi: " + err.message);
+        }
+    }
+}
+  
+
+});
+// ==========================================================
+// 🔥 LOGIC QUÊN MẬT KHẨU (PHIÊN BẢN GLOBAL - CHẮC CHẮN CHẠY) 🔥
+// ==========================================================
+
+// 1. Mở Modal
+window.openForgotModal = function() {
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) authModal.style.display = 'none';
+
+    const forgotModal = document.getElementById('forgot-password-modal');
+    if (forgotModal) {
+        forgotModal.style.display = 'flex';
+        // Reset giao diện về bước 1
+        if(document.getElementById('forgot-step-1')) document.getElementById('forgot-step-1').style.display = 'block';
+        if(document.getElementById('forgot-step-2')) document.getElementById('forgot-step-2').style.display = 'none';
+        
+        // Xóa dữ liệu cũ
+        document.getElementById('forgot-email').value = '';
+        document.getElementById('reset-otp').value = '';
+        document.getElementById('reset-new-pass').value = '';
+    }
+}
+
+// 2. Đóng Modal
+window.closeForgotModal = function() {
+    const forgotModal = document.getElementById('forgot-password-modal');
+    if (forgotModal) forgotModal.style.display = 'none';
+}
+
+// 3. Quay lại bước 1
+window.backToStep1 = function() {
+    document.getElementById('forgot-step-1').style.display = 'block';
+    document.getElementById('forgot-step-2').style.display = 'none';
+}
+
+// 4. Xử lý Gửi OTP (Gán vào window để sửa lỗi ReferenceError)
+window.handleSendOtp = async function() {
+    console.log("Bắt đầu gửi OTP..."); // Log kiểm tra
+    
+    const emailInput = document.getElementById('forgot-email');
+    const email = emailInput.value.trim();
+    
+    // Tìm nút bấm để làm hiệu ứng loading (nếu có)
+    const btn = document.querySelector('#forgot-step-1 button');
+    
+    if (!email) {
+        alert("Vui lòng nhập email!");
+        return;
+    }
+
+    // Hiệu ứng loading
+    let originalText = "Gửi Mã OTP";
+    if (btn) {
+        originalText = btn.textContent;
+        btn.textContent = "Đang gửi...";
+        btn.disabled = true;
+    }
+
+    try {
+        const res = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert("✅ Đã gửi mã thành công! Vui lòng kiểm tra email.");
+            // Chuyển sang bước 2
+            document.getElementById('forgot-step-1').style.display = 'none';
+            document.getElementById('forgot-step-2').style.display = 'block';
+        } else {
+            alert("⚠️ " + (data.message || "Lỗi gửi mail"));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("❌ Lỗi kết nối Server");
+    } finally {
+        // Trả lại nút bấm
+        if (btn) {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    }
+}
+
+// 5. Xử lý Đổi Mật Khẩu
+window.handleSubmitReset = async function() {
+    const email = document.getElementById('forgot-email').value.trim();
+    const otp = document.getElementById('reset-otp').value.trim();
+    const newPassword = document.getElementById('reset-new-pass').value;
+
+    if (!otp || !newPassword) return alert("Vui lòng nhập đủ Mã OTP và Mật khẩu mới!");
+
+    try {
+        const res = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email, otp, newPassword })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert("🎉 Đổi mật khẩu thành công! Hãy đăng nhập lại.");
+            window.closeForgotModal();
+            
+            // Mở lại modal đăng nhập
+            const authModal = document.getElementById('auth-modal');
+            if (authModal) authModal.style.display = 'flex';
+        } else {
+            alert("⚠️ " + (data.message || "Mã OTP không đúng"));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("❌ Lỗi Server");
+    }
+}
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Tìm nút đổi màu (Nó sẽ tự tìm thấy dù bạn đang ở trang Admin hay User)
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const body = document.body;
+
+    // Nếu trang hiện tại không có nút này (ví dụ trang login) thì không làm gì cả để tránh lỗi
+    if (!themeToggleBtn) return;
+
+    // 2. Kiểm tra bộ nhớ xem khách từng chọn Dark Mode chưa
+    const currentTheme = localStorage.getItem('theme');
+    
+    if (currentTheme === 'dark') {
+        body.classList.add('dark-mode');
+        themeToggleBtn.innerHTML = '☀️'; // Đổi thành mặt trời
+    }
 
 
-
-
-
-
+});

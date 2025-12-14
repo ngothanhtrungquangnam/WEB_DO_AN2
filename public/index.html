@@ -5,6 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quán Ăn Ngon 24h</title>
     <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { 
+            getAuth, 
+            GoogleAuthProvider, 
+            RecaptchaVerifier, 
+            signInWithPhoneNumber,
+            signInWithPopup,
+            // 👇 THÊM HAI DÒNG NÀY 👇
+            signInWithRedirect,  
+            getRedirectResult    
+        } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+     const firebaseConfig = { 
+  apiKey : "AIzaSyBYSPBbU7Bvwr0NqSEe8QbRhV9isZiqXMU" , 
+  authDomain : "quan-an-ngon-24h.firebaseapp.com" , 
+  projectId : "quan-an-ngon-24h" , 
+  storageBucket : "quan-an-ngon-24h.firebasestorage.app" , 
+  messagingSenderId : "278494088500" , 
+  appId : "1:278494088500:web:1b8ceae987e7a3358d2961" 
+};
+      // Khởi tạo Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      
+      // Gán vào biến window để file script.js bên dưới dùng được
+    window.firebaseAuth = auth;
+      window.GoogleAuthProvider = GoogleAuthProvider; // 👈 Thiếu cái này là báo lỗi "Chưa sẵn sàng"
+     
+      window.signInWithPopup = signInWithPopup;       // 👈 Thiếu cái này không bật Popup được
+      window.RecaptchaVerifier = RecaptchaVerifier;
+      window.signInWithPhoneNumber = signInWithPhoneNumber;
+      window.signInWithRedirect = signInWithRedirect;
+      window.getRedirectResult = getRedirectResult;
+      console.log("✅ Firebase đã khởi tạo thành công!");
+    </script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quán Ăn Ngon 24h</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/socket.io/socket.io.js"></script>
+
+    </head>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 
@@ -41,7 +86,146 @@
     <footer>
         <p>© 2025 Quán Ăn Ngon 24h</p>
     </footer>
+<div id="auth-modal" class="auth-overlay" style="display: none;">
+        <div class="auth-container" id="auth-container">
+            
+           <div class="form-container sign-up-container">
+                <form id="form-signup">
+                    <h1 class="form-title">Tạo tài khoản</h1>
+                    
+                    <input type="email" id="signup-email" placeholder="Email" required />
+                    <input type="password" id="signup-password" placeholder="Mật khẩu" required />
+                    <input type="password" id="signup-confirm" placeholder="Nhập lại mật khẩu" required />
+                    
+                    <button type="submit">Đăng Ký</button>
 
+                    <div class="social-divider">
+                        <span>Hoặc đăng ký bằng</span>
+                    </div>
+                    <div class="social-container">
+                        <a href="#" class="social google" title="Google"><i class="bi bi-google"></i></a>
+                        <a href="#" class="social phone" title="Số điện thoại"><i class="bi bi-telephone-fill"></i></a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="form-container sign-in-container">
+                <form id="form-login">
+                    <h1 class="form-title">Đăng nhập</h1>
+                    
+                    <input type="text" id="login-username" placeholder="Email hoặc Tên đăng nhập" required />
+                    <input type="password" id="login-password" placeholder="Mật khẩu" required />
+                   <div class="forgot-pass-wrapper">
+                         <a href="#" onclick="openForgotModal()">Quên mật khẩu?</a>
+                 </div>
+                    
+                    <button type="submit">Đăng Nhập</button>
+
+                    <div class="social-divider">
+                        <span>Hoặc tiếp tục với</span>
+                    </div>
+                    <div class="social-container">
+                        <a href="#" class="social google" title="Google"><i class="bi bi-google"></i></a>
+                        <a href="#" class="social phone" title="Số điện thoại"><i class="bi bi-telephone-fill"></i></a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="overlay-container">
+                <div class="overlay">
+                    <div class="overlay-panel overlay-left">
+                        <h1>Chào bạn cũ!</h1>
+                        <p>Nếu bạn đã có tài khoản, hãy đăng nhập để tiếp tục đặt món nhé.</p>
+                        <button class="ghost" id="signInBtn">Đăng Nhập</button>
+                    </div>
+                    <div class="overlay-panel overlay-right">
+                        <h1>Khách hàng mới?</h1>
+                        <p>Đăng ký ngay để tích điểm và nhận ưu đãi từ Quán Ăn Ngon 24h.</p>
+                        <button class="ghost" id="signUpBtn">Đăng Ký</button>
+                    </div>
+                </div>
+                <button id="close-auth-modal" style="position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 2rem; color: white; cursor: pointer; z-index: 100;">&times;</button>
+            </div>
+            <div id="phone-login-form" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+            
+            <button id="back-to-email" style="position: absolute; top: 15px; left: 15px; border: none; background: none; font-size: 1.5rem; cursor: pointer; color: #333;">
+                <i class="bi bi-arrow-left"></i> Quay lại
+            </button>
+            
+            <h1 style="color: #ff7043; margin-bottom: 20px; font-weight: bold; font-size: 1.8rem;">Đăng nhập SĐT</h1>
+            
+            <div id="step-1-phone" style="width: 100%; max-width: 320px; text-align: center;">
+                <p style="margin-bottom: 15px; color: #666;">Nhập số điện thoại của bạn (VD: +849...)</p>
+                
+                <input type="text" id="phone-number-input" placeholder="+84 999 999 999" 
+                       style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; outline: none; background: #f9f9f9;">
+                
+                <div id="recaptcha-container" style="margin-bottom: 15px; display: flex; justify-content: center;"></div>
+                
+                <button id="btn-send-otp" style="background: #ff7043; color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; width: 100%;">
+                    Gửi mã OTP
+                </button>
+            </div>
+
+            <div id="step-2-otp" style="display: none; width: 100%; max-width: 320px; text-align: center;">
+                <p style="margin-bottom: 15px; color: #666;">Nhập mã 6 số vừa gửi tới điện thoại</p>
+                
+                <input type="text" id="otp-input" placeholder="123456" maxlength="6"
+                       style="width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; text-align: center; letter-spacing: 8px; font-size: 1.5rem; font-weight: bold; outline: none;">
+                
+                <button id="btn-verify-otp" style="background: #28a745; color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-weight: bold; width: 100%;">
+                    Xác thực & Đăng nhập
+                </button>
+            </div>
+        </div>
+        </div>
+    </div>
+<div id="password-setup-modal" class="auth-overlay" style="display: none; justify-content: center; align-items: center;">
+    <div class="auth-container" style="max-width: 400px; padding: 30px; text-align: center; background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <h2 style="color: #ff7043; margin-bottom: 20px;">🔒 Thiết Lập Mật Khẩu</h2>
+        <p style="margin-bottom: 25px;">Vui lòng tạo mật khẩu cho tài khoản <strong id="setup-email-display"></strong> để bạn có thể đăng nhập bằng email/mật khẩu sau này.</p>
+        
+        <form id="form-setup-password">
+            <input type="password" 
+       id="setup-password-input" 
+       placeholder="Mật khẩu mới (ít nhất 6 ký tự)">
+       
+<input type="password" 
+       id="setup-confirm-input" 
+       placeholder="Nhập lại mật khẩu mới">
+
+<button type="button" onclick="submitPasswordSetup()"> 
+    Hoàn tất & Đăng nhập
+</button>
+        </form>
+    </div>
+</div>
+<div id="forgot-password-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeForgotModal()">&times;</span>
+        
+        <div id="forgot-step-1">
+            <h2 style="color: #e67e22;">🔑 Quên Mật Khẩu</h2>
+            <p>Nhập email để nhận mã xác thực (OTP).</p>
+            
+            <input type="email" id="forgot-email" placeholder="Ví dụ: abc@gmail.com" style="width: 100%; padding: 10px; margin: 10px 0;">
+            
+            <button type="button" class="btn" onclick="handleSendOtp()">Gửi Mã OTP</button>
+        </div>
+
+        <div id="forgot-step-2" style="display: none;">
+            <h2 style="color: #27ae60;">✅ Đã gửi mã!</h2>
+            <p>Kiểm tra email và nhập thông tin:</p>
+            
+            <input type="text" id="reset-otp" placeholder="Mã OTP (6 số)" style="width: 100%; padding: 10px; margin-bottom: 5px;">
+            <input type="password" id="reset-new-pass" placeholder="Mật khẩu mới" style="width: 100%; padding: 10px;">
+            
+            <button type="button" class="btn" style="margin-top: 15px;" onclick="handleSubmitReset()">Đổi Mật Khẩu</button>
+            
+            <p style="margin-top: 10px; cursor: pointer; color: blue;" onclick="backToStep1()">Nhập sai email? Quay lại</p>
+        </div>
+    </div>
+</div>
         <script>
         // === BIẾN GLOBAL ===
         let userInfo = null; 
@@ -56,47 +240,51 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function runIndexPageLogic() {
-            const utilityDropdown = document.getElementById("utilityDropdown");
-            if (utilityDropdown) {
-                if (userInfo) {
-                    utilityDropdown.style.display = "inline-block";
-                } else {
-                    utilityDropdown.style.display = "none";
-                }
-            }
+// --- HÀM LOGIC MỚI CHO INDEX (Đã xóa bỏ code chuyển trang cũ) ---
+       function runIndexPageLogic() {
+    // 1. Xử lý Dropdown Tiện ích (Giữ nguyên của bạn)
+    const utilityDropdown = document.getElementById("utilityDropdown");
+    if (utilityDropdown) {
+        utilityDropdown.style.display = userInfo ? "inline-block" : "none";
+    }
 
-            const authButton = document.getElementById("authButton");
-            const navOrderLink = document.getElementById("nav-order-link");
-            const navAdminLink = document.getElementById("nav-admin-link");
+    // 2. Xử lý hiển thị nút trên Navbar
+    const authButton = document.getElementById("authButton");
+    const navOrderLink = document.getElementById("nav-order-link");
+    const navAdminLink = document.getElementById("nav-admin-link");
 
-            if (authButton && navOrderLink && navAdminLink) { 
-                if (userInfo) {
-                    authButton.textContent = "Đăng xuất";
-                    if (userInfo.role === "admin") {
-                        navOrderLink.style.display = "none";
-                        navAdminLink.style.display = "inline-block";
-                    } else {
-                        navOrderLink.style.display = "inline-block";
-                        navAdminLink.style.display = "none";
-                    }
-                    authButton.addEventListener("click", () => {
-                        localStorage.removeItem("userInfo");
-                        window.location.href = "/index.html";
-                    });
-                } else {
-                    authButton.textContent = "Đăng nhập";
-                    navOrderLink.style.display = "none";
-                    navAdminLink.style.display = "none";
-                    authButton.addEventListener("click", () => {
-                        window.location.href = "/login.html";
-                    });
-                }
-            } else {
-                console.error("Lỗi: Không tìm thấy các nút điều khiển header!");
-            }
-        }
+    // --- SỬA LẠI: Tách rời các IF để không bị lỗi khi thiếu nút ---
 
+    // A. Xử lý nút Đăng nhập (Chỉ thay đổi chữ, không gán click vì script.js lo)
+    if (authButton) {
+        if (userInfo) {
+            // === ĐÃ ĐĂNG NHẬP ===
+            authButton.textContent = `Đăng xuất (${userInfo.username})`;
+        } else {
+            // === CHƯA ĐĂNG NHẬP ===
+            authButton.textContent = "Đăng nhập";
+        }
+    }
+
+    // B. Xử lý Link "Đặt món" (Chỉ hiện cho User thường)
+    if (navOrderLink) {
+        // Logic: Phải có user VÀ không phải admin mới hiện
+        if (userInfo && userInfo.role !== 'admin') {
+            navOrderLink.style.display = "inline-block";
+        } else {
+            navOrderLink.style.display = "none";
+        }
+    }
+
+    // C. Xử lý Link "Quản lý" (Chỉ hiện cho Admin)
+    if (navAdminLink) {
+        if (userInfo && userInfo.role === "admin") {
+            navAdminLink.style.display = "inline-block";
+        } else {
+            navAdminLink.style.display = "none";
+        }
+    }
+}
         // === CODE "LẮP RÁP" MỚI (GIỮ NGUYÊN) ===
         document.addEventListener("DOMContentLoaded", () => {
             userInfo = JSON.parse(localStorage.getItem("userInfo")); // Gán giá trị cho biến global
@@ -141,10 +329,10 @@
     </script>
 
         <script src="script.js" defer></script> 
-    <script src="data.js" defer></script> 
+   
     
-            <script src="/socket.io/socket.io.js"></script>
-        <script src="js/chatbox.js"></script>
+   
 
+<script src="/js/aiChat.js"></script>
 </body>
 </html>

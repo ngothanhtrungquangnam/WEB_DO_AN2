@@ -27,6 +27,9 @@ router.get('/active-admin', donHangController.getAdminActiveOrders);
 // GET /api/donhang/details/:id (Lấy chi tiết 1 đơn khi bấm vào bàn)
 router.get('/details/:id', donHangController.getSingleOrderDetails);
 
+// Thêm dòng này (đặt trước các route có :id để tránh bị nhầm)
+router.get('/stats/daily', donHangController.getDailyStats);
+
 // (Route mới cho Lịch sử ZaloPay)
 router.get('/zalopay-history', donHangController.getZaloPayHistory);
 
@@ -44,4 +47,10 @@ router.delete('/:id', donHangController.deleteOrder);
 router.get('/user/:userId', donHangController.getDonHangByUser);
 // === ROUTE MỚI ĐỂ TRẢ BÀN ===
 router.post('/release-table/:id', donHangController.releaseTableManually);
+router.post('/update-item', donHangController.apiUpdateItem);
+router.post('/switch-table', donHangController.apiSwitchTable);
+
+router.put('/:id/pay', donHangController.markOrderAsPaid);       // API nút Thanh toán
+router.put('/:id/finish', donHangController.finishTableSession); // API nút Trả bàn
+router.get('/:id', donHangController.getDonHangById);
 module.exports = router;

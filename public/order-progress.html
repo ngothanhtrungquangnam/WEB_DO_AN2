@@ -1,301 +1,859 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tiến trình đơn hàng</title>
-    <link rel="stylesheet" href="style.css"> 
-   <script src="/socket.io/socket.io.js"></script>
-    <style>
-        /* (Toàn bộ CSS của bạn cho progress-bar... giữ nguyên) */
-        body { background-color: #f4f4f4; margin: 0; }
-        .container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
-        h2 { text-align: center; color: #ff7043; margin-bottom: 2rem; }
-        .order-card { background: #fff; margin-bottom: 1.5rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
-        .order-header { padding: 1rem 1.5rem; background: #fffaf7; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .order-body { padding: 1.5rem; }
-        .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
-        .order-item:last-child { border-bottom: none; }
-        .order-footer { padding: 1rem 1.5rem; background: #f9f9f9; text-align: right; font-size: 1.2rem; font-weight: bold; }
-        .progress-bar { display: flex; padding-top: 15px; margin-top: 15px; border-top: 1px dashed #eee; }
-        .progress-step { flex: 1; text-align: center; position: relative; color: #aaa; font-size: 0.85rem; font-weight: 500; }
-        .progress-step .dot { width: 14px; height: 14px; background-color: #ddd; border-radius: 50%; display: inline-block; border: 2px solid #f4f4f4; position: relative; z-index: 2; }
-        .progress-step .step-label { margin-top: 5px; }
-        .progress-step::after { content: ''; position: absolute; top: 8px; left: 50%; width: 100%; height: 3px; background-color: #ddd; z-index: 1; }
-        .progress-step:last-child::after { display: none; }
-        .progress-step.active { color: #007bff; font-weight: bold; }
-        .progress-step.active .dot { background-color: #007bff; }
-        .progress-step.active::after { background-color: #007bff; }
-        .progress-step.completed { color: #4caf50; font-weight: bold; }
-        .progress-step.completed .dot { background-color: #4caf50; }
-        .progress-step.completed::after { background-color: #4caf50; }
-        .status-cancelled { color: #f44336; font-weight: bold; font-size: 1rem; text-align: center; padding: 15px 0; border-top: 1px dashed #eee; margin-top: 15px; }
-        .payment-status { font-size: 0.9rem; text-align: right; padding-bottom: 10px; }
-        .payment-status-paid { color: #28a745; font-weight: bold; }
-        .payment-status-unpaid { color: #fd7e14; font-weight: bold; }
-        .payment-status-pending { color: #007bff; font-weight: bold; }
-    </style>
-</head>
-<body>
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tiến trình đơn hàng</title>
+        <link rel="stylesheet" href="style.css"> 
+        <script src="/socket.io/socket.io.js"></script>
+        <style>
+            /* --- CSS CŨ (GIỮ NGUYÊN) --- */
+            body { background-color: #f4f4f4; margin: 0; font-family: sans-serif; }
+            .container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
+            h2 { text-align: center; color: #ff7043; margin-bottom: 2rem; }
+            .order-card { background: #fff; margin-bottom: 1.5rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+            .order-header { padding: 1rem 1.5rem; background: #fffaf7; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+            .order-body { padding: 1.5rem; }
+            .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; align-items: center;}
+            .order-item:last-child { border-bottom: none; }
+            .order-footer { padding: 1rem 1.5rem; background: #f9f9f9; text-align: right; font-size: 1.2rem; font-weight: bold; }
+            
+            /* Progress Bar */
+            .progress-bar { display: flex; padding-top: 15px; margin-top: 15px; border-top: 1px dashed #eee; }
+            .progress-step { flex: 1; text-align: center; position: relative; color: #aaa; font-size: 0.85rem; font-weight: 500; }
+            .progress-step .dot { width: 14px; height: 14px; background-color: #ddd; border-radius: 50%; display: inline-block; border: 2px solid #f4f4f4; position: relative; z-index: 2; }
+            .progress-step .step-label { margin-top: 5px; }
+            .progress-step::after { content: ''; position: absolute; top: 8px; left: 50%; width: 100%; height: 3px; background-color: #ddd; z-index: 1; }
+            .progress-step:last-child::after { display: none; }
+            .progress-step.active { color: #007bff; font-weight: bold; }
+            .progress-step.active .dot { background-color: #007bff; }
+            .progress-step.active::after { background-color: #007bff; }
+            .progress-step.completed { color: #4caf50; font-weight: bold; }
+            .progress-step.completed .dot { background-color: #4caf50; }
+            .progress-step.completed::after { background-color: #4caf50; }
+            
+            /* Status Text */
+            .status-cancelled { color: #f44336; font-weight: bold; font-size: 1rem; text-align: center; padding: 15px 0; border-top: 1px dashed #eee; margin-top: 15px; }
+            .payment-status { font-size: 0.9rem; text-align: right; padding-bottom: 10px; }
+            .payment-status-paid { color: #28a745; font-weight: bold; }
+            .payment-status-unpaid { color: #fd7e14; font-weight: bold; }
+            .payment-status-pending { color: #007bff; font-weight: bold; }
 
-    <div id="navbar-placeholder"></div>
+            /* --- CSS MỚI: BUTTONS ITEM --- */
+            .item-controls { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; }
+            .btn-action { cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 4px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: all 0.2s; }
+            .btn-action:hover { background-color: #f0f0f0; transform: scale(1.05); }
+            .btn-inc { color: green; border-color: #c3e6cb; background-color: #f0fff4; }
+            .btn-dec { color: orange; border-color: #ffeeba; background-color: #fff3cd; }
+            .btn-del { color: red; border-color: #f5c6cb; background-color: #f8d7da; }
 
-    <main class="container">
-        <h2>Tiến trình Đơn hàng</h2>
-        <div id="order-list-container">
-            <p style="text-align: center;">Đang tải các đơn hàng đang xử lý...</p>
+            /* --- CSS MỚI: BUTTON CHUYỂN BÀN & GỌI THÊM --- */
+            .btn-switch-table {
+                background-color: #ffc107; 
+                border: 1px solid #e0a800;
+                color: #333; 
+                padding: 5px 10px; 
+                border-radius: 4px; 
+                font-size: 0.85rem; 
+                cursor: pointer; 
+                font-weight: bold;
+                margin-left: 10px;
+                display: inline-flex; align-items: center; gap: 5px;
+            }
+            .btn-switch-table:hover { background-color: #e0a800; }
+
+            .btn-add-more {
+                width: 100%;
+                padding: 12px;
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 1rem;
+                margin-top: 15px;
+                cursor: pointer;
+                display: flex; justify-content: center; align-items: center; gap: 8px;
+                transition: background 0.2s;
+            }
+            .btn-add-more:hover { background-color: #218838; }
+
+            /* --- CSS MỚI: MODAL MENU --- */
+            .modal {
+                display: none; /* Mặc định ẩn */
+                position: fixed; 
+                z-index: 1000; 
+                left: 0; top: 0;
+                width: 100%; height: 100%; 
+                background-color: rgba(0,0,0,0.6); /* Nền đen mờ */
+                backdrop-filter: blur(2px);
+            }
+            .modal-content {
+                background-color: white;
+                margin: 5% auto;
+                padding: 0;
+                border-radius: 12px;
+                width: 95%;
+                max-width: 500px;
+                max-height: 85vh; 
+                overflow: hidden;
+                display: flex; flex-direction: column;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                position: relative;
+            }
+            .modal-header {
+                padding: 15px;
+                border-bottom: 1px solid #eee;
+                background: #fffaf7;
+                display: flex; justify-content: space-between; align-items: center;
+            }
+            .modal-header h3 { margin: 0; color: #ff7043; }
+            .close-modal {
+                font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa; line-height: 1;
+            }
+            .close-modal:hover { color: #333; }
+            
+            #menu-list-container {
+                padding: 15px;
+                overflow-y: auto;
+            }
+            
+            .menu-item-row {
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+            }
+            .menu-item-row:last-child { border-bottom: none; }
+            .menu-item-row {
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        padding: 12px 0; 
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* --- CSS MỚI THÊM CHO ẢNH --- */
+    /* Group bao quanh ảnh và tên món để nằm về bên trái */
+    .menu-item-left-group {
+        display: flex;
+        align-items: center;
+        flex: 1; /* Chiếm phần không gian còn lại */
+    }
+
+    /* Style cho ảnh thumbnail */
+    .menu-item-thumb {
+        width: 60px;       /* Chiều rộng ảnh */
+        height: 60px;      /* Chiều cao ảnh */
+        object-fit: cover; /* Đảm bảo ảnh không bị méo nếu tỷ lệ không chuẩn */
+        border-radius: 8px;/* Bo tròn góc nhẹ */
+        margin-right: 15px;/* Khoảng cách giữa ảnh và tên món */
+        border: 1px solid #eee;
+        background-color: #f9f9f9; /* Màu nền dự phòng khi ảnh chưa tải */
+    }
+            .btn-select-food {
+                background: #007bff; color: white; border: none;
+                padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.9rem;
+            }
+            .btn-select-food:hover { background: #0056b3; }
+
+
+            /* --- CSS MỚI: MODAL QR CODE --- */
+    #qrModal {
+        display: none; 
+        position: fixed; 
+        top: 0; left: 0; 
+        width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.8); 
+        z-index: 2000; /* Cao hơn các modal khác */
+        justify-content: center; 
+        align-items: center;
+    }
+    .qr-modal-content {
+        background: white; 
+        padding: 25px; 
+        border-radius: 15px; 
+        width: 90%; 
+        max-width: 400px; 
+        text-align: center; 
+        position: relative;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        animation: zoomIn 0.3s;
+    }
+    @keyframes zoomIn {
+        from { transform: scale(0.8); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    .qr-close-btn {
+        position: absolute; 
+        top: 10px; right: 15px; 
+        font-size: 28px; 
+        cursor: pointer; 
+        font-weight: bold; 
+        color: #888;
+    }
+    .qr-close-btn:hover { color: #333; }
+    .btn-finish-transfer {
+        width: 100%; 
+        padding: 12px; 
+        margin-top: 20px; 
+        background: #28a745; 
+        color: white; 
+        border: none; 
+        border-radius: 8px; 
+        font-weight: bold; 
+        cursor: pointer; 
+        font-size: 1rem;
+    }
+    .btn-finish-transfer:hover { background: #218838; }
+        </style>
+    </head>
+    <body>
+
+        <div id="navbar-placeholder"></div>
+
+        <main class="container">
+            <h2>Tiến trình Đơn hàng</h2>
+            <div id="order-list-container">
+                <p style="text-align: center;">Đang tải các đơn hàng đang xử lý...</p>
+            </div>
+        </main>
+
+        <div id="menuModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🍽️ Menu Quán</h3>
+                    <span class="close-modal" onclick="dongModalMenu()">&times;</span>
+                </div>
+                <div id="menu-loading" style="text-align: center; padding: 20px; display: none;">
+                    ⏳ Đang tải menu...
+                </div>
+                <div id="menu-list-container">
+                    </div>
+            </div>
         </div>
-    </main>
-    
-    <footer>
-        <p>© 2025 Quán Ăn Ngon 24h</p>
-    </footer>
-
-    <script>
-     let userInfo = null;
-        let socket = null; 
-
-        // Hàm vẽ thanh tiến trình
-        function renderProgressBar(status) {
-            const steps = ['Mới', 'Đang xử lý', 'Hoàn thành'];
-            let currentStepIndex = steps.indexOf(status);
-            if (status === 'Đã hủy') {
-                return `<div class="status-cancelled">❌ Đơn hàng đã bị hủy</div>`;
-            }
-            let html = '<div class="progress-bar">';
-            for (let i = 0; i < steps.length; i++) {
-                let stepClass = 'progress-step';
-                if (i <= currentStepIndex) {
-                    stepClass += (i === steps.length - 1) ? ' completed' : ' active';
-                }
-                html += `<div class="${stepClass}"><div class="dot"></div><div class="step-label">${steps[i]}</div></div>`;
-            }
-            html += '</div>';
-            return html;
-        }
-
-        // Hàm vẽ trạng thái thanh toán
-        function renderPaymentStatus(order) {
-            if (order.trangThaiThanhToan === 'Đã thanh toán') {
-                return `<span class="payment-status-paid">(Đã thanh toán)</span>`;
-            }
-            if (order.phuongThucThanhToan === 'Tiền mặt') { 
-                return `<span class="payment-status-unpaid">(Chưa thanh toán)</span>`;
-            }
-            return `<span class="payment-status-pending">(Chờ thanh toán)</span>`;
-        }
-
-        // Hàm định dạng tiền
-        function formatCurrency(price) {
-            if (typeof price !== 'number') { price = 0; }
-            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-        }
+      <div id="qrModal">
+    <div class="qr-modal-content">
+        <span class="qr-close-btn" ...>&times;</span>
         
-        // Hàm showToast (nếu chưa có)
-        if (typeof globalShowToast !== 'function') {
-            window.showToast = function(message) {
-                alert(message); 
-            }
-        }
-
-        // HÀM TẢI CÁC ĐƠN HÀNG ĐANG XỬ LÝ
-        async function loadActiveOrders() {
-            const container = document.getElementById('order-list-container');
-            container.innerHTML = '<p style="text-align: center;">Đang tải các đơn hàng đang xử lý...</p>';
+        <h3 style="color:#0056b3; margin-top:0;">Quét mã để thanh toán</h3>
+        
+        <p id="bankNote" style="font-weight:bold; color:#d32f2f; margin: 10px 0; font-size: 1rem; background: #fff0f0; padding: 8px; border-radius: 5px; border: 1px dashed #ffcccc;">
+            Đang tải thông tin ngân hàng...
+        </p>
+        <p style="font-size:0.9rem; color:#555; margin-bottom: 15px;">Sử dụng App Ngân hàng hoặc Camera để quét</p>
             
-            const token = userInfo ? userInfo.token : null;
-            if (!token) { 
-                container.innerHTML = '<p style="text-align: center; color: red;">Bạn cần đăng nhập để xem.</p>';
-                return; 
-            }
+            <img id="vietqrImage" src="" alt="Đang tạo mã QR..." style="width:100%; border-radius:10px; border: 1px solid #ddd; min-height: 300px; object-fit: contain;">
             
-            try {
-                const userId = userInfo ? (userInfo.userId || userInfo._id) : null;
-                if (!userId) { 
-                    throw new Error("Không tìm thấy thông tin userId. Vui lòng đăng nhập lại.");
+            <div style="margin-top:15px; background:#f9f9f9; padding:15px; border-radius:8px; text-align:left; font-size:0.95rem;">
+                <div style="margin-bottom: 5px;">💰 Số tiền: <b id="qrAmount" style="color:red; font-size:1.2rem;">...</b></div>
+                <div>📝 Nội dung: <b id="qrContent" style="color:#333;">...</b></div>
+            </div>
+
+            <button class="btn-finish-transfer" onclick="document.getElementById('qrModal').style.display='none'">
+                Đã chuyển khoản xong
+            </button>
+        </div>
+    </div>
+        </div>
+    </div>
+        
+        <footer>
+            <p style="text-align: center; margin-top: 30px; color: #888;">© 2025 Quán Ăn Ngon 24h</p>
+        </footer>
+
+        <script>
+            let userInfo = null;
+            let socket = null;
+            let currentTargetOrderId = null; // Biến lưu ID đơn hàng đang thao tác gọi thêm
+            let qrCheckInterval = null;
+
+            // --- CÁC HÀM TIỆN ÍCH ---
+
+            function renderProgressBar(status) {
+                const steps = ['Mới', 'Đang xử lý', 'Hoàn thành'];
+                let currentStepIndex = steps.indexOf(status);
+                if (status === 'Đã hủy') {
+                    return `<div class="status-cancelled">❌ Đơn hàng đã bị hủy</div>`;
                 }
-
-               const response = await fetch(`/api/donhang/my-active?userId=${userId}`, { 
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-                if (!response.ok) {
-                   const errData = await response.json();
-                   throw new Error(errData.message || 'Không thể tải lịch sử đơn hàng.');
-                }
-                
-                const allOrders = await response.json();
-
-                // *** BỘ LỌC ĐÚNG: CHỈ LẤY ĐƠN "MỚI" HOẶC "ĐANG XỬ LÝ" ***
-                const activeOrders = allOrders.filter(order => 
-                    order.status === 'Mới' || order.status === 'Đang xử lý'
-                );
-                
-                if (!activeOrders || activeOrders.length === 0) {
-                    container.innerHTML = '<p style="text-align: center;">Bạn không có đơn hàng nào đang được xử lý.</p>';
-                    return;
-                }
-                
-                container.innerHTML = ''; 
-                
-                activeOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-                // Render
-                activeOrders.forEach(order => {
-                    const orderCard = document.createElement('div');
-                    orderCard.className = 'order-card'; 
-                    orderCard.id = `order-card-${order._id}`; 
-                    
-                    const paymentStatusHtml = renderPaymentStatus(order);
-                    const progressBarHtml = renderProgressBar(order.status); // Dùng thanh tiến trình
-
-                    const itemsHtml = order.items.map(item => `
-                        <div class="order-item">
-                            <span class="item-name">${item.itemId ? item.itemId.name : 'Món không xác định'} (x${item.quantity})</span>
-                            <span class="item-price">${formatCurrency(item.itemId ? (item.itemId.gia || item.itemId.price || 0) * item.quantity : 0)}</span>
-                        </div>
-                    `).join('');
-                    
-                    orderCard.innerHTML = `
-                        <div class="order-header">
-                            <div>
-                                <strong>Mã đơn:</strong> ${order._id.substring(0, 10)}... <br>
-                                <strong>Ngày đặt:</strong> ${new Date(order.createdAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                        </div>
-                        <div class="order-body">
-                            <div class="payment-status" id="payment-status-${order._id}">
-                                ${paymentStatusHtml}
-                            </div>
-                            ${itemsHtml}
-                            <div class="status-container" id="status-container-${order._id}">
-                                ${progressBarHtml}
-                            </div>
-                        </div>
-                        <div class="order-footer">
-                            <span>Tổng cộng:</span>
-                            <span>${formatCurrency(order.totalPrice)}</span>
-                        </div>
-                    `;
-                    container.appendChild(orderCard);
-                });
-            } catch (err) {
-                console.error('Lỗi khi tải tiến trình:', err);
-                container.innerHTML = `<p style="text-align: center; color: red;">${err.message}</p>`;
-            }
-        }
-
-        // *** HÀM LOGIC CHÍNH (ĐỂ BẬT TẮT MENU) ***
-        function runPageLogic() {
-            // 1. Tải các đơn hàng đang hoạt động
-            loadActiveOrders();
-
-            // 2. Lấy các nút từ navbar
-            const authButton = document.getElementById("authButton");
-            const navOrderLink = document.getElementById("nav-order-link");
-            const navAdminLink = document.getElementById("nav-admin-link");
-            const utilityDropdown = document.getElementById("utilityDropdown");
-
-            // 3. Kiểm tra xem các nút có tồn tại không
-            if (authButton && navOrderLink && navAdminLink && utilityDropdown) { 
-                if (userInfo) {
-                    // Đã đăng nhập
-                    authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
-                    utilityDropdown.style.display = "inline-block"; // <-- BẬT TIỆN ÍCH
-                    
-                    if (userInfo.role === "admin") {
-                        navOrderLink.style.display = "none";
-                        navAdminLink.style.display = "inline-block";
-                    } else {
-                        navOrderLink.style.display = "inline-block"; // <-- BẬT ĐẶT MÓN
-                        navAdminLink.style.display = "none";
+                let html = '<div class="progress-bar">';
+                for (let i = 0; i < steps.length; i++) {
+                    let stepClass = 'progress-step';
+                    if (i <= currentStepIndex) {
+                        stepClass += (i === steps.length - 1) ? ' completed' : ' active';
                     }
-                    authButton.addEventListener("click", () => {
-                        localStorage.clear(); 
-                        window.location.href = "/index.html";
-                    });
-                } else {
-                    // Chưa đăng nhập
-                    authButton.textContent = "Đăng nhập";
-                    utilityDropdown.style.display = "none";
-                    navOrderLink.style.display = "none";
-                    navAdminLink.style.display = "none";
-                    authButton.addEventListener("click", () => {
-                        window.location.href = "login.html";
-                    });
+                    html += `<div class="${stepClass}"><div class="dot"></div><div class="step-label">${steps[i]}</div></div>`;
                 }
-            } else {
-                   console.error("Lỗi: Không tìm thấy các nút trong file navbar. Hãy kiểm tra ID.");
+                html += '</div>';
+                return html;
             }
-            
-            // 4. KẾT NỐI SOCKET.IO ĐỂ LẮNG NGHE
-            try {
-                if (!socket) { 
-                    socket = io(); 
+            function closeQRModal() {
+                document.getElementById('qrModal').style.display = 'none';
+                // Dừng việc kiểm tra ngay lập tức
+                if (qrCheckInterval) {
+                    clearInterval(qrCheckInterval);
+                    qrCheckInterval = null;
                 }
-                socket.on('connect', () => console.log('User đã kết nối Socket.IO'));
+            }
 
-                socket.on('order_updated', (updatedOrder) => {
-                    if (userInfo && updatedOrder.user && (userInfo.userId === updatedOrder.user._id || userInfo.userId === updatedOrder.user)) {
+    function renderPaymentStatus(order) {
+        // 1. Lấy thông tin tiền
+        const tongTien = order.totalPrice || order.totalAmount || 0;
+        const daTra = order.amountPaid || 0; 
+        const chenhLech = tongTien - daTra;
+
+        // Style cho nút bấm QR (chỉ dùng cho chuyển khoản)
+        const btnStyle = "cursor:pointer; text-decoration:underline; color:#007bff; font-weight:bold; border:none; background:none; padding:0; font-size:0.95rem;";
+
+        // ============================================================
+        // TRƯỜNG HỢP 1: Đã thanh toán xong (Xanh lá)
+        // ============================================================
+        if (order.trangThaiThanhToan === 'Đã thanh toán' || order.paymentStatus === 'paid' || (daTra > 0 && chenhLech <= 0)) {
+            return `<span class="payment-status-paid">✅ Đã thanh toán</span>`;
+        }
+
+        // ============================================================
+        // TRƯỜNG HỢP 2: Thanh toán TIỀN MẶT (Sửa theo ý bạn)
+        // => Chỉ hiện chữ, KHÔNG HIỆN NÚT QR
+        // ============================================================
+        // Kiểm tra kỹ các từ khóa có thể lưu trong DB
+        if (order.paymentMethod === 'Tiền mặt' || order.paymentMethod === 'cash' || order.paymentMethod === 'cod') {
+            
+            // Trả về HTML chỉ có chữ, không có thẻ <button>
+            return `<span class="payment-status-unpaid" style="color: #ff9800; font-weight: bold;">
+                        💵 Vui lòng thanh toán tại quầy (${formatCurrency(chenhLech)})
+                    </span>`;
+        }
+
+        // ============================================================
+        // TRƯỜNG HỢP 3: Chuyển khoản / Mặc định (Hiện nút QR)
+        // ============================================================
+        
+        // Nếu dư nợ (Cần hoàn lại)
+        if (chenhLech < 0) {
+            return `<span style="color: purple; font-weight: bold;">🟣 Cần hoàn lại: ${formatCurrency(Math.abs(chenhLech))}</span>`;
+        }
+
+        // Nếu thiếu tiền -> Hiện nút QR
+        if (chenhLech > 0) {
+            // Chưa trả đồng nào
+            if (daTra === 0) {
+                return `
+                    <span class="payment-status-pending">⏳ Chờ chuyển khoản</span>
+                    <button onclick="showTransferQR('${order._id}', ${chenhLech})" style="${btnStyle}; margin-left:8px;">
+                        [📲 Lấy mã QR]
+                    </button>
+                `;
+            } 
+            // Đã trả 1 phần, còn thiếu
+            else {
+                return `
+                    <span style="color: #fd7e14; font-weight: bold;">⚠️ Thiếu: ${formatCurrency(chenhLech)}</span>
+                    <button onclick="showTransferQR('${order._id}', ${chenhLech})" style="${btnStyle}; margin-left:8px;">
+                        [📲 QR Trả nốt]
+                    </button>
+                `;
+            }
+        }
+
+        return `<span class="payment-status-pending">⏳ Đang xử lý...</span>`;
+    }
+        function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    }
+            
+            if (typeof globalShowToast !== 'function') {
+                window.showToast = function(message) { alert(message); }
+            }
+
+            // --- 1. API: CẬP NHẬT MÓN (Tăng/Giảm/Xóa/Thêm) ---
+            async function goiApiCapNhatMon(orderId, itemId, quantity) {
+                // quantity = 0: Xóa
+                // quantity > 0: Cập nhật số lượng
+                
+                // Chỉ hiện confirm khi xóa hẳn (quantity = 0) để thao tác nhanh hơn
+                if (quantity === 0 && !confirm("Bạn có chắc chắn muốn xóa món này?")) return;
+                
+                try {
+                    const response = await fetch('/api/donhang/update-item', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId, itemId, quantity })
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        if (quantity === 1 && currentTargetOrderId) {
+                            // Trường hợp gọi từ Modal (Thêm món mới)
+                            alert("✅ Đã thêm món vào đơn!");
+                            dongModalMenu();
+                        }
+                        loadActiveOrders(); // Reload lại giao diện
+                    } else {
+                        alert(data.message); // Báo lỗi (VD: Đơn đã khóa)
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Lỗi kết nối server!");
+                }
+            }
+    // --- HÀM MỚI: HIỂN THỊ QR VÀ TỰ ĐỘNG CHECK THANH TOÁN (ĐÃ SỬA LỖI) ---
+    async function showTransferQR(orderId, amountOverride = null) {
+        try {
+            // 1. Reset vòng lặp cũ (nếu có)
+            if (typeof qrCheckInterval !== 'undefined' && qrCheckInterval) clearInterval(qrCheckInterval);
+
+            // 2. Hiển thị modal loading (GIỮ NGUYÊN)
+            const modal = document.getElementById('qrModal');
+            const img = document.getElementById('vietqrImage');
+            const txtAmount = document.getElementById('qrAmount');
+            const txtContent = document.getElementById('qrContent');
+            const bankNote = document.getElementById('bankNote'); // (Mới thêm để hiện tên NH)
+            
+            if(modal) modal.style.display = 'flex';
+            if(img) img.src = 'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif'; // Ảnh loading
+            if(txtAmount) txtAmount.innerText = 'Đang tính...';
+            if(txtContent) txtContent.innerText = '...';
+
+            // 3. Chuẩn bị dữ liệu (GIỮ NGUYÊN)
+            const payload = { orderId: orderId };
+            if (amountOverride !== null && amountOverride > 0) {
+                payload.amount = amountOverride;
+            }
+
+            // 4. Gọi API tạo QR (SỬA ĐÚNG DÒNG NÀY)
+            // Gọi vào route mới mà chúng ta vừa tạo ở bước trước
+            const res = await fetch('/api/payment/create-vietqr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json(); 
+
+            if (data.success) {
+                // Cập nhật ảnh QR (GIỮ NGUYÊN)
+                if(img) img.src = data.qrCodeUrl;
+                if(txtAmount) txtAmount.innerText = parseInt(data.amount).toLocaleString('vi-VN') + 'đ';
+                if(txtContent) txtContent.innerText = data.memo;
+                
+                // (Mới thêm) Hiển thị tên ngân hàng để khách biết đang chuyển vào đâu
+                if(bankNote && data.bankInfo) {
+                    bankNote.innerText = `Ngân hàng: ${data.bankInfo.bankId} - STK: ${data.bankInfo.accountNo}`;
+                }
+
+                // =======================================================
+                // 🔥 BẮT ĐẦU VÒNG LẶP KIỂM TRA (POLLING) - GIỮ NGUYÊN 🔥
+                // =======================================================
+                qrCheckInterval = setInterval(async () => {
+                    try {
+                        const checkRes = await fetch(`/api/donhang/details/${orderId}?t=${new Date().getTime()}`);
+                        if (!checkRes.ok) return;
+
+                        const orderInfo = await checkRes.json();
                         
-                        showToast(`Đơn hàng #${updatedOrder._id.substring(0, 6)} đã đổi trạng thái thành "${updatedOrder.status}"`);
+                        console.log("🔍 Đang kiểm tra...", orderInfo.trangThaiThanhToan);
 
-                        if (updatedOrder.status === 'Hoàn thành' || updatedOrder.status === 'Đã hủy') {
-                            const cardToRemove = document.getElementById(`order-card-${updatedOrder._id}`);
-                            if (cardToRemove) cardToRemove.remove();
+                        const daTra = orderInfo.amountPaid || 0;
+                        const tongTien = orderInfo.totalPrice || 0;
+
+                        if (
+                            orderInfo.trangThaiThanhToan === 'Đã thanh toán' || 
+                            (daTra > 0 && daTra >= tongTien)
+                        ) {
+                            clearInterval(qrCheckInterval); // Dừng kiểm tra
+                            if(typeof closeQRModal === 'function') closeQRModal(); // Tắt modal
+                            if(typeof loadActiveOrders === 'function') loadActiveOrders(); // Load lại list
+                            alert("✅ Thanh toán thành công!");
+                        }
+                    } catch (e) {
+                        console.error("Lỗi check status:", e);
+                    }
+                }, 2000); 
+
+            } else {
+                // 👇 XỬ LÝ RIÊNG TRƯỜNG HỢP ĐÃ THANH TOÁN ĐỦ 👇
+                if (data.message === "Đơn hàng đã thanh toán đủ!") {
+                    console.log("Đơn hàng đã thanh toán xong, không cần hiện QR.");
+                    if(typeof closeQRModal === 'function') closeQRModal();
+                    if(typeof loadActiveOrders === 'function') loadActiveOrders(); // Load lại để hiện màu xanh
+                    
+                    // (Tùy chọn) Hiện thông báo nhẹ nhàng thay vì Alert lỗi
+                    // alert("✅ Đơn hàng đã được thanh toán hoàn tất!"); 
+                } else {
+                    // Các lỗi khác thì vẫn hiện Alert như thường
+                    alert('Lỗi tạo mã QR: ' + data.message);
+                    if(typeof closeQRModal === 'function') closeQRModal();
+                }
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert('Lỗi kết nối server khi tạo QR!');
+            if(typeof closeQRModal === 'function') closeQRModal();
+        }
+    }
+    // Đóng modal khi click ra ngoài vùng trắng
+            window.addEventListener('click', function(event) {
+                const modalQR = document.getElementById('qrModal');
+                const modalMenu = document.getElementById('menuModal');
+                
+                if (event.target == modalQR) {
+                    closeQRModal(); // Sửa thành hàm này
+                }
+                if (event.target == modalMenu) {
+                    dongModalMenu();
+                }
+            });
+
+            // --- 2. API: CHUYỂN BÀN ---
+            async function goiApiChuyenBan(orderId, currentTableName) {
+                // Trong thực tế, nên dùng Modal Dropdown chọn bàn. 
+                // Ở đây dùng prompt nhập ID/Tên bàn để giữ code đơn giản như yêu cầu.
+                const newTableId = prompt(`Đơn hàng đang ở ${currentTableName}.\nNhập ID bàn mới muốn chuyển sang (Lấy ID từ DB):`);
+                
+                if (!newTableId) return;
+
+                try {
+                    const response = await fetch('/api/donhang/switch-table', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ orderId, newTableId })
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert("✅ " + data.message);
+                        loadActiveOrders();
+                    } else {
+                        alert(data.message);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Lỗi kết nối server!");
+                }
+            }
+
+            // --- 3. LOGIC MODAL MENU ---
+            async function moModalGoiThem(orderId) {
+                currentTargetOrderId = orderId; 
+                document.getElementById('menuModal').style.display = 'block';
+                document.getElementById('menu-loading').style.display = 'block';
+                const container = document.getElementById('menu-list-container');
+                container.innerHTML = ''; // Clear cũ
+
+                try {
+                    // 🔥 GỌI API LẤY MENU TOÀN BỘ MÓN
+                    const res = await fetch('/api/monan'); 
+                    
+                    if (!res.ok) throw new Error("Không thể tải menu");
+                    
+                    const foods = await res.json();
+                    document.getElementById('menu-loading').style.display = 'none';
+
+                    if (foods.length === 0) {
+                        container.innerHTML = '<p style="text-align:center">Menu trống.</p>';
+                        return;
+                    }
+
+                container.innerHTML = foods.map(food => `
+        <div class="menu-item-row">
+            <div class="menu-item-left-group">
+                <img src="${food.image}" alt="${food.name}" class="menu-item-thumb" onerror="this.src='/images/default-food.png'">
+                
+                <div>
+                    <strong>${food.name}</strong>
+                    <div style="color: #666; font-size: 0.9rem;">${formatCurrency(food.price || food.gia)}</div>
+                </div>
+            </div>
+
+            <button class="btn-select-food" onclick="chonMonTuMenu('${food._id}')">
+                + Thêm
+            </button>
+        </div>
+    `).join('');
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('menu-loading').style.display = 'none';
+                    container.innerHTML = '<p style="text-align:center; color:red">Lỗi tải menu.</p>';
+                }
+            }
+
+            function dongModalMenu() {
+                document.getElementById('menuModal').style.display = 'none';
+                currentTargetOrderId = null;
+            }
+
+    // --- SỬA HÀM CHỌN MÓN TỪ MENU (THÔNG MINH HƠN) ---
+    async function chonMonTuMenu(foodId) {
+        if (!currentTargetOrderId) return;
+
+        // 1. Hiển thị thông báo nhỏ hoặc hiệu ứng (Tùy chọn)
+        // console.log("Đang thêm món:", foodId);
+
+        try {
+            // 2. Lấy thông tin đơn hàng hiện tại để biết món đó đã có chưa
+            // (Phải gọi API để lấy dữ liệu mới nhất, tránh dùng biến cũ)
+            const res = await fetch(`/api/donhang/details/${currentTargetOrderId}?t=${new Date().getTime()}`);
+            if (!res.ok) throw new Error("Lỗi lấy chi tiết đơn");
+            
+            const order = await res.json();
+            
+            // 3. Tìm xem món ăn này đã tồn tại trong giỏ chưa
+            // Lưu ý: itemId có thể là Object (nếu populate) hoặc String
+            const itemExist = order.items.find(i => 
+                (i.itemId._id && i.itemId._id.toString() === foodId) || // Trường hợp đã populate
+                (i.itemId.toString() === foodId)                        // Trường hợp chưa populate
+            );
+
+            let newQuantity = 1;
+
+            if (itemExist) {
+                // Nếu đã có -> Cộng dồn số lượng cũ + 1
+                newQuantity = itemExist.quantity + 1;
+                console.log(`Món đã có (SL: ${itemExist.quantity}). Tăng lên: ${newQuantity}`);
+            } else {
+                console.log("Món mới. Thêm vào SL: 1");
+            }
+
+            // 4. Gọi API cập nhật với số lượng ĐÃ TÍNH TOÁN
+            await goiApiCapNhatMon(currentTargetOrderId, foodId, newQuantity);
+            
+            // 5. Thông báo nhẹ (Tùy chọn)
+            // alert("✅ Đã thêm món vào đơn!"); 
+
+        } catch (e) {
+            console.error("Lỗi khi chọn món:", e);
+            alert("Không thể thêm món. Vui lòng thử lại!");
+        }
+    }
+
+            // Đóng modal khi click ra ngoài
+            window.onclick = function(event) {
+                const modal = document.getElementById('menuModal');
+                if (event.target == modal) {
+                    dongModalMenu();
+                }
+            }
+
+            // --- 4. HÀM TẢI & RENDER ĐƠN HÀNG ---
+            async function loadActiveOrders() {
+                const container = document.getElementById('order-list-container');
+                
+                const token = userInfo ? userInfo.token : null;
+                if (!token) { 
+                    container.innerHTML = '<p style="text-align: center; color: red;">Bạn cần đăng nhập để xem.</p>';
+                    return; 
+                }
+                
+                try {
+                    const userId = userInfo ? (userInfo.userId || userInfo._id) : null;
+                    if (!userId) throw new Error("Thiếu userId.");
+
+                    const response = await fetch(`/api/donhang/my-active?userId=${userId}`, { 
+                        method: 'GET',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        throw new Error(errData.message || 'Lỗi tải đơn hàng.');
+                    }
+                    
+                    const allOrders = await response.json();
+                    const activeOrders = allOrders.filter(order => order.status === 'Mới' || order.status === 'Đang xử lý');
+                    
+                    if (!activeOrders || activeOrders.length === 0) {
+                        container.innerHTML = '<p style="text-align: center;">Bạn không có đơn hàng nào đang được xử lý.</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = ''; 
+                    activeOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                    // RENDER TỪNG ĐƠN HÀNG
+                    activeOrders.forEach(order => {
+                        const orderCard = document.createElement('div');
+                        orderCard.className = 'order-card'; 
+                        orderCard.id = `order-card-${order._id}`; 
+                        
+                        const paymentStatusHtml = renderPaymentStatus(order);
+                        const progressBarHtml = renderProgressBar(order.status);
+
+                        // Render danh sách món ăn + Nút điều khiển
+                        const itemsHtml = order.items.map(item => {
+                            const itemId = item.itemId ? item.itemId._id : '';
+                            const itemName = item.itemId ? item.itemId.name : 'Món lỗi';
+                            const itemPrice = item.itemId ? (item.itemId.gia || item.itemId.price || 0) : 0;
                             
-                            if (document.querySelectorAll('.order-card').length === 0) {
-                                document.getElementById('order-list-container').innerHTML = '<p style="text-align: center;">Bạn không có đơn hàng nào đang được xử lý.</p>';
-                            }
+                            return `
+                                <div class="order-item">
+                                    <div style="flex: 1;">
+                                        <span class="item-name"><strong>${itemName}</strong></span><br>
+                                        <span class="item-price">${formatCurrency(itemPrice * item.quantity)}</span>
+                                    </div>
+                                    <div class="item-controls">
+                                        <button class="btn-action btn-dec" title="Giảm" onclick="goiApiCapNhatMon('${order._id}', '${itemId}', ${item.quantity - 1})">-</button>
+                                        <span style="margin: 0 8px; font-weight:bold; min-width: 20px; text-align: center;">${item.quantity}</span>
+                                        <button class="btn-action btn-inc" title="Tăng" onclick="goiApiCapNhatMon('${order._id}', '${itemId}', ${item.quantity + 1})">+</button>
+                                        <button class="btn-action btn-del" title="Xóa" style="margin-left:10px;" onclick="goiApiCapNhatMon('${order._id}', '${itemId}', 0)">🗑️</button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        // Render HTML cho Card
+                        orderCard.innerHTML = `
+                            <div class="order-header">
+                                <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div>
+                                        <div style="display: flex; align-items: center;">
+                                            <strong style="font-size: 1.1rem; color: #333;">Bàn: ${order.banId ? order.banId.soBan : 'Mang về'}</strong>
+                                            
+                                            <button class="btn-switch-table" onclick="goiApiChuyenBan('${order._id}', '${order.banId ? order.banId.soBan : ''}')">
+                                                🔄 Chuyển bàn
+                                            </button>
+                                        </div>
+                                        <div style="margin-top: 5px; font-size: 0.85rem; color: #777;">
+                                            Mã đơn: #${order._id.substring(0, 8)}...
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right; font-size: 0.85rem; color: #666;">
+                                        ${new Date(order.createdAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}<br>
+                                        ${new Date(order.createdAt).toLocaleDateString('vi-VN')}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="order-body">
+                                <div class="payment-status" id="payment-status-${order._id}">
+                                    ${paymentStatusHtml}
+                                </div>
+
+                                <div style="margin-bottom: 15px;">${itemsHtml}</div>
+
+                                ${(order.status === 'Mới' || order.status === 'Đang xử lý') ? 
+                                    `<button class="btn-add-more" onclick="moModalGoiThem('${order._id}')">
+                                        ➕ Gọi thêm món từ Menu
+                                    </button>` : ''
+                                }
+
+                                <div class="status-container" id="status-container-${order._id}">
+                                    ${progressBarHtml}
+                                </div>
+                            </div>
+
+                            <div class="order-footer">
+                                <span>Tổng cộng:</span>
+                                <span style="color: #d32f2f; font-size: 1.3rem;">${formatCurrency(order.totalPrice)}</span>
+                            </div>
+                        `;
+                        container.appendChild(orderCard);
+                    });
+                } catch (err) {
+                    console.error('Lỗi tải tiến trình:', err);
+                    container.innerHTML = `<p style="text-align: center; color: red;">${err.message}</p>`;
+                }
+            }
+
+            // --- 5. LOGIC CHẠY TRANG (NAVBAR, SOCKET, INIT) ---
+            function runPageLogic() {
+                loadActiveOrders();
+                const urlParams = new URLSearchParams(window.location.search);
+                const newOrderId = urlParams.get('newOrder');
+
+                // 2. Nếu có ID đơn hàng mới -> Tự động gọi hàm hiện QR
+                if (newOrderId) {
+                    console.log("Phát hiện đơn hàng mới, đang mở QR:", newOrderId);
+                    
+                    // Đợi 1 chút để giao diện render xong rồi mới bật
+                    setTimeout(() => {
+                        showTransferQR(newOrderId);
+                        
+                        // (Tùy chọn) Xóa ID khỏi URL để F5 không bị bật lại
+                        window.history.replaceState({}, document.title, "/order-progress.html");
+                    }, 1000); 
+                }
+                const authButton = document.getElementById("authButton");
+                const navOrderLink = document.getElementById("nav-order-link");
+                const navAdminLink = document.getElementById("nav-admin-link");
+                const utilityDropdown = document.getElementById("utilityDropdown");
+
+                if (authButton && navOrderLink && navAdminLink && utilityDropdown) { 
+                    if (userInfo) {
+                        authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
+                        utilityDropdown.style.display = "inline-block";
+                        
+                        if (userInfo.role === "admin") {
+                            navOrderLink.style.display = "none";
+                            navAdminLink.style.display = "inline-block";
                         } else {
-                            const progressBarContainer = document.getElementById(`status-container-${updatedOrder._id}`);
-                            if (progressBarContainer) {
-                                progressBarContainer.innerHTML = renderProgressBar(updatedOrder.status);
-                            }
-                            const paymentStatusContainer = document.getElementById(`payment-status-${updatedOrder._id}`);
-                            if (paymentStatusContainer) {
-                                 paymentStatusContainer.innerHTML = renderPaymentStatus(updatedOrder);
+                            navOrderLink.style.display = "inline-block";
+                            navAdminLink.style.display = "none";
+                        }
+                        authButton.addEventListener("click", () => {
+                            localStorage.clear(); 
+                            window.location.href = "/index.html";
+                        });
+                    } else {
+                        authButton.textContent = "Đăng nhập";
+                        utilityDropdown.style.display = "none";
+                        navOrderLink.style.display = "none";
+                        navAdminLink.style.display = "none";
+                        authButton.addEventListener("click", () => {
+                            window.location.href = "login.html";
+                        });
+                    }
+                }
+                
+                // Socket IO
+                try {
+                    if (!socket) socket = io(); 
+                    socket.on('connect', () => console.log('User connected Socket.IO'));
+
+                    socket.on('order_updated', (updatedOrder) => {
+                        if (userInfo && updatedOrder.user && (userInfo.userId === updatedOrder.user._id || userInfo.userId === updatedOrder.user)) {
+                            
+                            showToast(`Đơn hàng #${updatedOrder._id.substring(0, 6)} cập nhật: ${updatedOrder.status}`);
+
+                            if (updatedOrder.status === 'Hoàn thành' || updatedOrder.status === 'Đã hủy') {
+                                const card = document.getElementById(`order-card-${updatedOrder._id}`);
+                                if (card) card.remove();
+                                if (document.querySelectorAll('.order-card').length === 0) {
+                                    document.getElementById('order-list-container').innerHTML = '<p style="text-align: center;">Bạn không có đơn hàng nào đang được xử lý.</p>';
+                                }
+                            } else {
+                                // Cập nhật lại UI nếu trạng thái thay đổi (để update progress bar)
+                                loadActiveOrders(); 
                             }
                         }
-                    }
-                });
-            } catch(err) { 
-                console.error("Lỗi kết nối Socket.IO:", err.message); 
-            }
-        }
+                    });
+                    
+                    // Lắng nghe sự kiện update từ server (do Chatbot hoặc API khác tác động)
+                    socket.on('SERVER_UPDATE_ORDER', (data) => {
+                        // Để đơn giản, cứ có signal update là reload lại list cho chắc
+                        loadActiveOrders();
+                    });
 
-        // *** HÀM INIT (TẢI NAVBAR CHUẨN) ***
-        document.addEventListener('DOMContentLoaded', () => {
-            userInfo = JSON.parse(localStorage.getItem("userInfo")); 
-
-            let navbarFile = '/guest-navbar.html'; // Mặc định
-            
-            if (userInfo && userInfo.role === 'admin') {
-                navbarFile = '/admin-navbar.html'; 
-            } else if (userInfo) {
-                navbarFile = '/user-navbar.html'; 
+                } catch(err) { console.error("Socket Error:", err.message); }
             }
-            
-            fetch(navbarFile)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
-                    return response.text();
-                })
-                .then(data => {
-                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
-                    if (navbarPlaceholder) {
-                        navbarPlaceholder.innerHTML = data;
-                    }
-                    runPageLogic(); 
-                })
-                .catch(error => {
-                    console.error('Lỗi tải menu:', error);
-                    runPageLogic(); // Vẫn chạy dù menu lỗi
-                });
-        });
-    </script>
-    
-</body>
-</html>
-  
+
+            document.addEventListener('DOMContentLoaded', () => {
+                userInfo = JSON.parse(localStorage.getItem("userInfo")); 
+                let navbarFile = '/guest-navbar.html';
+                if (userInfo && userInfo.role === 'admin') navbarFile = '/admin-navbar.html'; 
+                else if (userInfo) navbarFile = '/user-navbar.html'; 
+                
+                fetch(navbarFile)
+                    .then(r => { if(!r.ok) throw new Error('Navbar 404'); return r.text(); })
+                    .then(data => {
+                        const el = document.getElementById('navbar-placeholder');
+                        if (el) el.innerHTML = data;
+                        runPageLogic(); 
+                    })
+                    .catch(e => {
+                        console.error(e);
+                        runPageLogic(); 
+                    });
+            });
+        </script>
+    </body>
+    </html>
