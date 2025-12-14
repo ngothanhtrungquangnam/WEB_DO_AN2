@@ -203,7 +203,7 @@
             
             // 3. Kết nối Socket.IO
             try {
-                socket = io(); 
+               const socket = io('https://web-do-an2.onrender.com');
                 socket.on('connect', () => console.log('Admin (ZaloPay) đã kết nối Socket.IO'));
                 
                 socket.on('order_updated', (updatedOrder) => {

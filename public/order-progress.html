@@ -806,7 +806,7 @@
                 
                 // Socket IO
                 try {
-                    if (!socket) socket = io(); 
+                    if (!socket) socket = io('https://web-do-an2.onrender.com');
                     socket.on('connect', () => console.log('User connected Socket.IO'));
 
                     socket.on('order_updated', (updatedOrder) => {

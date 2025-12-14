@@ -544,7 +544,7 @@ if (utilityDropdown) utilityDropdown.style.display = "inline-block";
 
             // 4. Kết nối Socket.IO
             try {
-                socket = io(); 
+           const socket = io('https://web-do-an2.onrender.com');
                 socket.on('connect', () => console.log('Admin (Bàn) đã kết nối Socket.IO'));
                 socket.on('new_order', () => loadDataAndRenderMap());
                 socket.on('order_updated', () => loadDataAndRenderMap());

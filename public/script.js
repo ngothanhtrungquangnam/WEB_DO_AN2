@@ -289,7 +289,7 @@ function filterAndSearchMenu() {
 
         // Lắng nghe sự kiện real-time từ server
         try {
-            const socket = io(); 
+           const socket = io('https://web-do-an2.onrender.com');
             socket.on('connect', () => console.log('Admin connected to Socket.IO'));
             socket.on('new_order', (newOrder) => {
                 console.log('Admin nhận đơn mới:', newOrder);

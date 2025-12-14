@@ -47,7 +47,7 @@ const sendTelegramMessage = async (message) => {
 const io = new Server(server, {
   cors: {
    origin: [
-        'https://quan-an-ngon-24h-aab0ezbqe2cjdja2.eastasia-01.azurewebsites.net/index.html', 
+    'https://web-do-an2.onrender.com',
         'http://localhost:3000' // Để test cục bộ
     ],
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
