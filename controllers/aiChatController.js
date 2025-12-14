@@ -236,7 +236,9 @@ async function checkTableOwnership(tableName, currentUserId) {
 const xuLyDatHang = async (orderData, userId, io) => {
     try {
         const user = await User.findById(userId);
-        const realUserName = user ? (user.username || user.name) : "Khách";
+        const realUserName = user ? 
+                             (user.name || user.username || `Khách ${user._id.toString().substring(0, 4)}`) 
+                             : "Khách Vãng Lai"; // Đổi từ "Khách" thành "Khách Vãng Lai" để dễ phân biệt
         
         const tableNumberMatch = orderData.tableName ? orderData.tableName.match(/\d+/) : null;
         if (!tableNumberMatch) return { success: false, message: `⚠️ Tên bàn không hợp lệ.` };
@@ -292,7 +294,7 @@ const xuLyDatHang = async (orderData, userId, io) => {
         
         // --- TẠO ĐƠN MỚI ---
         if (!userId) return { success: false, message: "⚠️ Cần đăng nhập để đặt món." };
-        const newOrd = new DonHang({ user: userId, banId: ban._id, customerName: realUserName, items: newItems, totalPrice: addBill, status: 'Mới', trangThaiThanhToan: 'Chưa thanh toán' });
+       const newOrd = new DonHang({ user: userId, banId: ban._id, customerName: realUserName, items: newItems, totalPrice: addBill, status: 'Mới', trangThaiThanhToan: 'Chưa thanh toán' });
         const saved = await newOrd.save();
         ban.trangThai = 'Đang phục vụ'; ban.donHangHienTai = saved._id; await ban.save();
         
