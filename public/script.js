@@ -972,26 +972,39 @@ if (e.target.id === 'btn-verify-otp') {
 // --- E. KHI BẤM NÚT GOOGLE ---
 if (e.target.closest('.social.google')) {
     e.preventDefault();
-    console.log("Đã bấm nút Google!");
+    
+    // 1. Lấy nút Google để thao tác giao diện
+    const googleBtn = e.target.closest('.social.google');
 
-    // 🔥 BƯỚC 1: XÁC ĐỊNH ĐANG Ở FORM NÀO
-    const container = document.getElementById('auth-container');
-    // Nếu container có class 'right-panel-active' -> Form Đăng Ký đang hiện
-    const isRegisterMode = container ? container.classList.contains("right-panel-active") : false;
-    const actionType = isRegisterMode ? 'register' : 'login';
+    // 2. Kiểm tra: Nếu nút đang bị khóa (đang xử lý) thì dừng ngay, không làm gì cả
+    if (googleBtn.style.pointerEvents === 'none') return;
+
+    // 3. Khóa nút ngay lập tức (Làm mờ & chặn click)
+    googleBtn.style.pointerEvents = 'none';
+    googleBtn.style.opacity = '0.5';
+    console.log("🔒 Đang xử lý đăng nhập Google...");
 
     try {
+        console.log("Đã bấm nút Google!");
+
+        // --- XÁC ĐỊNH FORM ---
+        const container = document.getElementById('auth-container');
+        const isRegisterMode = container ? container.classList.contains("right-panel-active") : false;
+        const actionType = isRegisterMode ? 'register' : 'login';
+
         if (!window.GoogleAuthProvider || !window.signInWithPopup) {
              throw new Error("Firebase chưa sẵn sàng.");
         }
         
         const provider = new window.GoogleAuthProvider();
+        
+        // --- GỌI POPUP GOOGLE ---
         const result = await window.signInWithPopup(window.firebaseAuth, provider);
         const user = result.user;
         
         console.log(`✅ Google OK. Đang gửi về Server với chế độ: ${actionType}`);
 
-        // 🔥 BƯỚC 2: GỌI API VỚI actionType
+        // --- GỌI API SERVER ---
         const res = await fetch('/api/auth/social-register', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -1001,13 +1014,13 @@ if (e.target.closest('.social.google')) {
                 photo: user.photoURL,
                 provider: 'google',
                 uid: user.uid,
-                actionType: actionType // <-- GỬI CÁI NÀY ĐI
+                actionType: actionType
             })
         });
 
         const data = await res.json();
         
-        // 🔥 BƯỚC 3: XỬ LÝ PHẢN HỒI
+        // --- XỬ LÝ KẾT QUẢ ---
         if (res.ok) {
             localStorage.setItem('userInfo', JSON.stringify({
                 token: data.token, userId: data.userId, username: data.username, role: data.role, avatar: data.avatar
@@ -1016,21 +1029,34 @@ if (e.target.closest('.social.google')) {
             if (data.message === 'Đăng ký thành công') { 
                  const authModal = document.getElementById('auth-modal');
                  if (authModal) authModal.style.display = 'none';
-                 window.showPasswordSetupModal(data.userId, data.email, data.token); 
+                 // Nếu có hàm showPasswordSetupModal thì gọi, không thì chuyển trang
+                 if (typeof window.showPasswordSetupModal === 'function') {
+                    window.showPasswordSetupModal(data.userId, data.email, data.token);
+                 } else {
+                    window.location.href = '/index.html';
+                 }
             } else {
                  alert(`🎉 Chào mừng ${data.username}!`);
                  window.location.href = '/index.html'; 
             }
         } else {
-            // Hiển thị thông báo lỗi từ Server (Đúng câu bạn muốn)
             alert("⚠️ Thông báo: " + (data.message || "Thất bại"));
         }
         
     } catch (err) {
         console.error("❌ Lỗi Google:", err);
-        if (err.code !== 'auth/popup-closed-by-user') {
+        // Bỏ qua lỗi do người dùng tự tắt popup hoặc bấm hủy (tránh spam alert)
+        const ignoreErrors = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request'];
+        if (!ignoreErrors.includes(err.code)) {
             alert("Lỗi: " + err.message);
         }
+    } finally {
+        // 4. MỞ KHÓA NÚT (Quan trọng nhất: Luôn chạy dù thành công hay thất bại)
+        if (googleBtn) {
+            googleBtn.style.pointerEvents = 'auto';
+            googleBtn.style.opacity = '1';
+        }
+        console.log("🔓 Đã mở khóa nút Google.");
     }
 }
   
