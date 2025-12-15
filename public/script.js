@@ -23,6 +23,134 @@ window.showPasswordSetupModal = function(userId, email, token) {
         alert("Lỗi: Không tìm thấy giao diện thiết lập mật khẩu. Vui lòng thử lại sau.");
     }
 }
+
+// --- 1. KHAI BÁO BIẾN TOÀN CỤC (Để ai cũng dùng được) ---
+let allMenuItems = []; 
+
+// --- 2. HÀM renderMenu (ĐẶT Ở NGOÀI CÙNG) ---
+function renderMenu(items) {
+    const menuContainer = document.getElementById('menuContainer'); // Lấy lại element mỗi khi chạy
+    if (!menuContainer) return;
+
+    menuContainer.innerHTML = "";
+    
+    if (!items || items.length === 0) {
+        menuContainer.innerHTML = '<p class="no-results" style="text-align: center; width: 100%; padding: 20px;">Không tìm thấy món ăn nào.</p>';
+        return;
+    }
+
+    // Lưu cache để dùng cho giỏ hàng
+    localStorage.setItem("menuData", JSON.stringify(items));
+
+    items.forEach(item => {
+        // Random số liệu cho đẹp
+        const randomSold = Math.floor(Math.random() * 500) + 50; 
+        const randomStar = (Math.random() * (5.0 - 4.5) + 4.5).toFixed(1);
+
+        const card = document.createElement("div");
+        card.className = "food-card"; 
+        
+        card.innerHTML = `
+            <div class="card-image-wrapper">
+                <img src="${item.image || 'https://via.placeholder.com/300'}" alt="${item.name}" loading="lazy">
+                <div class="badge-favorite">Yêu thích</div>
+            </div>
+
+            <div class="card-info">
+                <h3 class="food-name">${item.name}</h3>
+                <div class="food-meta">
+                    <span class="star-rating">⭐ ${randomStar}</span>
+                    <span class="sold-count">Đã bán ${randomSold}</span>
+                </div>
+                <div class="price-row">
+                    <span class="current-price">${item.price.toLocaleString('vi-VN')}đ</span>
+                    <button class="btn-quick-add" onclick="addToClientCart('${item._id}')">+</button>
+                </div>
+            </div>
+        `;
+        menuContainer.appendChild(card);
+    });
+}
+
+// --- 3. HÀM LỌC DANH MỤC (ĐÃ CÓ TRƯỚC ĐÓ) ---
+window.filterByCategory = function(category, element) {
+    // Đổi màu icon active
+    document.querySelectorAll('.cat-item').forEach(el => el.classList.remove('active'));
+    if(element) element.classList.add('active');
+
+    // Dùng biến toàn cục allMenuItems để lọc
+    if (category === 'all') {
+        renderMenu(allMenuItems);
+    } else {
+        const filtered = allMenuItems.filter(item => 
+            item.category && item.category.toLowerCase().includes(category.toLowerCase())
+        );
+        renderMenu(filtered);
+    }
+}
+
+// --- 4. SỰ KIỆN LOAD TRANG (CHỈ CHỨA LOGIC LẤY DATA) ---
+document.addEventListener("DOMContentLoaded", () => {
+    // ... Các code khác giữ nguyên ...
+
+    // Hàm lấy dữ liệu từ Server
+    async function fetchMenu() {
+        try {
+            const response = await fetch('/api/mon-an'); 
+            if (!response.ok) throw new Error('Lỗi tải menu');
+            
+            // Gán dữ liệu vào biến TOÀN CỤC
+            allMenuItems = await response.json(); 
+            
+            // Gọi hàm render
+            renderMenu(allMenuItems); 
+        } catch (error) {
+            console.error("Lỗi:", error);
+        }
+    }
+
+    fetchMenu(); // Chạy ngay khi vào trang
+    
+    // ... Các code khác giữ nguyên ...
+});
+
+// --- 3. HÀM LỌC DANH MỤC (ĐÃ SỬA LỖI MẤT MÓN) ---
+window.filterByCategory = function(category, element) {
+    // 1. Đổi màu icon active
+    document.querySelectorAll('.cat-item').forEach(el => el.classList.remove('active'));
+    if(element) element.classList.add('active');
+
+    // 2. Kiểm tra dữ liệu
+    // ❌ CŨ (SAI): const items = window.allMenuItems || []; 
+    // ✅ MỚI (ĐÚNG): Dùng trực tiếp biến allMenuItems
+    const items = allMenuItems; 
+
+    console.log("Đang lọc danh mục:", category); // Log để kiểm tra
+    console.log("Tổng số món hiện có:", items.length); // Nếu bằng 0 nghĩa là chưa tải được data
+
+    if (!items || items.length === 0) {
+        console.warn("Chưa có dữ liệu menu để lọc!");
+        return;
+    }
+    
+    // 3. Logic lọc
+    if (category === 'all') {
+        renderMenu(items);
+    } else {
+        // Chuẩn hóa chuỗi về chữ thường để so sánh chính xác hơn
+        const filtered = items.filter(item => {
+            // Kiểm tra an toàn: nếu món ăn không có category thì bỏ qua
+            const itemCat = item.category ? item.category.toLowerCase().trim() : "";
+            const filterCat = category.toLowerCase().trim();
+            
+            // So sánh: Dùng includes để tìm gần đúng (Ví dụ: "Món nước" sẽ tìm thấy trong "Các món nước")
+            return itemCat.includes(filterCat);
+        });
+        
+        console.log(`Tìm thấy ${filtered.length} món cho danh mục ${category}`);
+        renderMenu(filtered);
+    }
+}
 // TÀI KHOẢN MÔ PHỎNG (Giả lập database)
 const MOCK_USERS = {
     "admin": { password: "admin", role: "admin" },
@@ -113,30 +241,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
  window.allMenuItems = []; // tạo biến toàn cục
-function renderMenu(items) {
-    menuContainer.innerHTML = "";
-    if (!items || items.length === 0) {
-        menuContainer.innerHTML = '<p class="no-results" style="text-align: center; width: 100%;">Không có món ăn nào.</p>';
-        return;
-    }
-
-    // 👉 Lưu danh sách món ăn vào localStorage để addToClientCart dùng
-    localStorage.setItem("menuData", JSON.stringify(items));
-
-    items.forEach(item => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <img src="${item.image || 'placeholder.jpg'}" alt="${item.name}"> 
-            <div class="card-content">
-                <h3>${item.name}</h3>
-                <p class="category">${item.category}</p>
-                <p class="price"><b>${item.price.toLocaleString('vi-VN')} VND</b></p>
-                <button class="btn" onclick="addToClientCart('${item._id}')">Thêm vào giỏ</button> 
-            </div>`;
-        menuContainer.appendChild(card);
-    });
-}
 
 
                     // --- Lọc và tìm kiếm (ĐÃ SỬA LỖI LOGIC LỌC) ---
@@ -1197,3 +1301,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 });
+// JS chạy đồng hồ đếm ngược giả lập
+setInterval(() => {
+    const timerDisplay = document.querySelector('.countdown-timer');
+    if(timerDisplay) {
+        // Lấy thời gian hiện tại
+        const now = new Date();
+        // Giả lập đếm ngược đến cuối ngày
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        const diff = endOfDay - now;
+
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+        timerDisplay.innerHTML = `<span>${h < 10 ? '0'+h : h}</span>:<span>${m < 10 ? '0'+m : m}</span>:<span>${s < 10 ? '0'+s : s}</span>`;
+    }
+}, 1000);

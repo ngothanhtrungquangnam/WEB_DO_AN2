@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quán Ăn Ngon 24h</title>
-    <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<script type="module">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quán Ăn Ngon 24h</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { 
             getAuth, 
@@ -14,60 +18,182 @@
             RecaptchaVerifier, 
             signInWithPhoneNumber,
             signInWithPopup,
-            // 👇 THÊM HAI DÒNG NÀY 👇
             signInWithRedirect,  
             getRedirectResult    
         } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-     const firebaseConfig = { 
-  apiKey : "AIzaSyBYSPBbU7Bvwr0NqSEe8QbRhV9isZiqXMU" , 
-  authDomain : "quan-an-ngon-24h.firebaseapp.com" , 
-  projectId : "quan-an-ngon-24h" , 
-  storageBucket : "quan-an-ngon-24h.firebasestorage.app" , 
-  messagingSenderId : "278494088500" , 
-  appId : "1:278494088500:web:1b8ceae987e7a3358d2961" 
-};
+
+      const firebaseConfig = { 
+        apiKey : "AIzaSyBYSPBbU7Bvwr0NqSEe8QbRhV9isZiqXMU" , 
+        authDomain : "quan-an-ngon-24h.firebaseapp.com" , 
+        projectId : "quan-an-ngon-24h" , 
+        storageBucket : "quan-an-ngon-24h.firebasestorage.app" , 
+        messagingSenderId : "278494088500" , 
+        appId : "1:278494088500:web:1b8ceae987e7a3358d2961" 
+      };
+
       // Khởi tạo Firebase
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       
-      // Gán vào biến window để file script.js bên dưới dùng được
-    window.firebaseAuth = auth;
-      window.GoogleAuthProvider = GoogleAuthProvider; // 👈 Thiếu cái này là báo lỗi "Chưa sẵn sàng"
-     
-      window.signInWithPopup = signInWithPopup;       // 👈 Thiếu cái này không bật Popup được
+      // Gán vào biến window để file script.js dùng được
+      window.firebaseAuth = auth;
+      window.GoogleAuthProvider = GoogleAuthProvider;
+      window.signInWithPopup = signInWithPopup;
       window.RecaptchaVerifier = RecaptchaVerifier;
       window.signInWithPhoneNumber = signInWithPhoneNumber;
       window.signInWithRedirect = signInWithRedirect;
       window.getRedirectResult = getRedirectResult;
+      
       console.log("✅ Firebase đã khởi tạo thành công!");
     </script>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quán Ăn Ngon 24h</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <script src="/socket.io/socket.io.js"></script>
 
-    </head>
-    <script src="/socket.io/socket.io.js"></script>
-</head>
+<style>
+    /* 1. ÉP MÀU NỀN XÁM (Khắc phục lỗi trắng toát) */
+    body {
+        background-color: #f0f2f5 !important;
+    }
 
+    /* 2. ÉP CÁC KHỐI NỔI LÊN (Khắc phục lỗi phẳng lì) */
+    .section-container, 
+    .menu-grid, 
+    .hero-banner, 
+    .category-scroll {
+        background-color: #ffffff !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+        margin-bottom: 20px !important;
+        padding: 20px !important;
+        border: none !important;
+    }
+
+    /* 3. ÉP HEADER DÍNH CHẶT (Dùng fixed để chắc chắn dính) */
+    header {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        z-index: 9999 !important;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+        background: linear-gradient(135deg, #ff7043, #ff9966) !important;
+    }
+
+    /* Đẩy nội dung xuống để không bị Header che mất (vì dùng fixed) */
+    body {
+        padding-top: 90px !important; 
+    }
+
+    /* 4. SỬA LỖI ẢNH BANNER */
+    .hero-banner {
+        padding: 0 !important;
+        overflow: hidden !important;
+        height: 280px !important;
+        margin-top: 20px !important;
+    }
+    
+    /* 5. SỬA THANH TÌM KIẾM CHO ĐẸP */
+    .search-wrapper {
+        width: 100% !important;
+        max-width: 600px !important;
+        background: white !important;
+        border-radius: 50px !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 10px 20px !important;
+        margin: 0 auto !important;
+    }
+</style>
 <body>
     <div id="toastMessage" class="toast"></div>
     
     <div id="navbar-placeholder"></div>
 
-    <section class="controls">
-        <input type="text" id="searchBox" placeholder="🔍 Tìm món ăn...">
-        <select id="categoryFilter">
-            <option value="all">Tất cả</option>
-            <option value="Món nước">Món nước</option>
-            <option value="Món khô">Món khô</option>
-            <option value="Nước uống">Nước uống</option>
-        </select>
-    </section>
+<section class="hero-banner">
+    <div class="banner-content">
+        <h2>Hôm nay bạn muốn ăn gì?</h2>
+        <p>Deal hời giá sốc - Freeship 0đ</p>
+        
+        <div class="search-wrapper">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchBox" placeholder="Tìm tên món ăn, trà sữa...">
+        </div>
+    </div>
+</section>
 
+<section class="category-scroll">
+    <div class="cat-item active" onclick="filterByCategory('all', this)">
+        <div class="cat-icon"><i class="bi bi-grid-fill"></i></div>
+        <span>Tất cả</span>
+    </div>
+    
+    <div class="cat-item" onclick="filterByCategory('Món nước', this)">
+        <div class="cat-icon">🍜</div>
+        <span>Món nước</span>
+    </div>
+
+    <div class="cat-item" onclick="filterByCategory('Món khô', this)">
+        <div class="cat-icon">🍛</div>
+        <span>Cơm/Khô</span>
+    </div>
+
+    <div class="cat-item" onclick="filterByCategory('Nước uống', this)">
+        <div class="cat-icon">🥤</div>
+        <span>Đồ uống</span>
+    </div>
+</section>
+<section class="section-container flash-sale-section">
+    <div class="section-header">
+        <div class="header-title">
+            <i class="bi bi-lightning-charge-fill" style="color: #ffc107;"></i>
+            <h2>Flash Sale</h2>
+            <div class="countdown-timer">
+                <span>02</span>:<span>15</span>:<span>30</span>
+            </div>
+        </div>
+        <a href="#" class="view-all">Xem tất cả ></a>
+    </div>
+<div class="horizontal-scroll">
+        <div class="mini-card">
+            <div class="mini-img">
+                <img src="https://via.placeholder.com/150" alt="Món sale">
+                <span class="sale-tag">-40%</span>
+            </div>
+            <div class="mini-info">
+                <h4>Cơm Gà Xối Mỡ</h4>
+                <div class="price-box">
+                    <span class="new-price">25.000đ</span>
+                    <span class="old-price">45.000đ</span>
+                </div>
+            </div>
+        </div>
+        </div>
+</section>
+
+<section class="section-container promo-banners">
+    <div class="promo-item" style="background-image: linear-gradient(to right, #ff9a9e, #fad0c4);">
+        <div class="promo-text">
+            <h3>FREESHIP</h3>
+            <p>Đơn từ 0đ</p>
+        </div>
+        <img src="https://cdn-icons-png.flaticon.com/512/3081/3081309.png" class="promo-img">
+    </div>
+    
+    <div class="promo-item" style="background-image: linear-gradient(to right, #a18cd1, #fbc2eb);">
+        <div class="promo-text">
+            <h3>GIẢM 50%</h3>
+            <p>Lần đầu đặt</p>
+        </div>
+        <img src="https://cdn-icons-png.flaticon.com/512/726/726476.png" class="promo-img">
+    </div>
+
+    <div class="promo-item" style="background-image: linear-gradient(to right, #84fab0, #8fd3f4);">
+        <div class="promo-text">
+            <h3>HOÀN XU</h3>
+            <p>Tối đa 10k</p>
+        </div>
+        <img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" class="promo-img">
+    </div>
+</section>
     <section class="menu">
         <div id="menuContainer" class="menu-grid">
                     </div>
@@ -83,9 +209,24 @@
         <p>Đăng nhập để xem thông tin cá nhân của bạn.</p>
     </section>
 
-    <footer>
-        <p>© 2025 Quán Ăn Ngon 24h</p>
-    </footer>
+  <footer class="modern-footer">
+    <div class="footer-content">
+        <div class="footer-col">
+            <h3>Quán Ăn Ngon 24h</h3>
+            <p>Hương vị chuẩn cơm mẹ nấu.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Liên kết</h3>
+            <ul>
+                <li><a href="#">Về chúng tôi</a></li>
+                <li><a href="#">Thực đơn</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2025 Quán Ăn Ngon 24h.</p>
+    </div>
+</footer>
 <div id="auth-modal" class="auth-overlay" style="display: none;">
         <div class="auth-container" id="auth-container">
             
