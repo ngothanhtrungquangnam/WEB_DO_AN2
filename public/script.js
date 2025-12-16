@@ -27,51 +27,54 @@ window.showPasswordSetupModal = function(userId, email, token) {
 // --- 1. KHAI BÁO BIẾN TOÀN CỤC (Để ai cũng dùng được) ---
 let allMenuItems = []; 
 
-// --- 2. HÀM renderMenu (ĐẶT Ở NGOÀI CÙNG) ---
+// --- 2. HÀM renderMenu (GIAO DIỆN MỚI: DẠNG LƯỚI HIỆN ĐẠI) ---
 function renderMenu(items) {
-    const menuContainer = document.getElementById('menuContainer'); // Lấy lại element mỗi khi chạy
+    const menuContainer = document.getElementById('menuContainer');
     if (!menuContainer) return;
+
+    // Thêm class mới cho container để áp dụng Grid CSS
+    menuContainer.classList.add('modern-grid-menu'); 
 
     menuContainer.innerHTML = "";
     
     if (!items || items.length === 0) {
-        menuContainer.innerHTML = '<p class="no-results" style="text-align: center; width: 100%; padding: 20px;">Không tìm thấy món ăn nào.</p>';
+        menuContainer.innerHTML = '<p class="no-results" style="text-align: center; width: 100%; padding: 20px; grid-column: 1 / -1;">Không tìm thấy món ăn nào.</p>';
         return;
     }
 
-    // Lưu cache để dùng cho giỏ hàng
-    localStorage.setItem("menuData", JSON.stringify(items));
-
     items.forEach(item => {
-        // Random số liệu cho đẹp
+        // Số liệu giả lập cho đẹp
         const randomSold = Math.floor(Math.random() * 500) + 50; 
         const randomStar = (Math.random() * (5.0 - 4.5) + 4.5).toFixed(1);
 
         const card = document.createElement("div");
-        card.className = "food-card"; 
+        card.className = "food-card modern-card"; // Thêm class modern-card
         
+        // Cấu trúc HTML mới: Ảnh trên, thông tin dưới
         card.innerHTML = `
             <div class="card-image-wrapper">
-                <img src="${item.image || 'https://via.placeholder.com/300'}" alt="${item.name}" loading="lazy">
-                <div class="badge-favorite">Yêu thích</div>
+                <img src="${item.image || 'https://via.placeholder.com/300x200'}" alt="${item.name}" loading="lazy">
+                <div class="badge-favorite"><i class="bi bi-heart-fill"></i> Yêu thích</div>
             </div>
 
             <div class="card-info">
                 <h3 class="food-name">${item.name}</h3>
+                
                 <div class="food-meta">
-                    <span class="star-rating">⭐ ${randomStar}</span>
+                    <span class="star-rating"><i class="bi bi-star-fill" style="color: #ffc107;"></i> ${randomStar}</span>
                     <span class="sold-count">Đã bán ${randomSold}</span>
                 </div>
+                
                 <div class="price-row">
                     <span class="current-price">${item.price.toLocaleString('vi-VN')}đ</span>
-                    <button class="btn-quick-add" onclick="addToClientCart('${item._id}')">+</button>
+                    <button class="btn-quick-add" onclick="addToClientCart('${item._id}')">
+                        <i class="bi bi-plus-lg"></i> </button>
                 </div>
             </div>
         `;
         menuContainer.appendChild(card);
     });
 }
-
 // --- 3. HÀM LỌC DANH MỤC (ĐÃ CÓ TRƯỚC ĐÓ) ---
 window.filterByCategory = function(category, element) {
     // Đổi màu icon active
@@ -93,25 +96,53 @@ window.filterByCategory = function(category, element) {
 document.addEventListener("DOMContentLoaded", () => {
     // ... Các code khác giữ nguyên ...
 
-    // Hàm lấy dữ liệu từ Server
-    async function fetchMenu() {
-        try {
-            const response = await fetch('/api/mon-an'); 
-            if (!response.ok) throw new Error('Lỗi tải menu');
-            
-            // Gán dữ liệu vào biến TOÀN CỤC
-            allMenuItems = await response.json(); 
-            
-            // Gọi hàm render
-            renderMenu(allMenuItems); 
-        } catch (error) {
-            console.error("Lỗi:", error);
-        }
-    }
+  // --- SỬA LẠI HÀM fetchMenu ---
+async function fetchMenu() {
+    try {
+        const response = await fetch('/api/mon-an'); 
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const allData = await response.json(); 
+        
+        // 🔥 LƯU TOÀN BỘ DỮ LIỆU VÀO BỘ NHỚ TẠI ĐÂY (QUAN TRỌNG NHẤT) 🔥
+        // Lưu cả Flash Sale và Món thường để nút đặt hàng luôn tìm thấy ID
+        localStorage.setItem("menuData", JSON.stringify(allData)); 
 
+        if (!Array.isArray(allData)) { currentMenuItems = []; } 
+        else { currentMenuItems = allData; }
+
+        console.log("🔥 Đã tải và lưu:", allData.length, "món.");
+
+        // --- Logic Lọc ---
+        const flashSaleItems = [];
+        const regularMenu = [];
+
+        allData.forEach(item => {
+            const cat = item.category ? item.category.toLowerCase().trim() : "";
+            // Kiểm tra category có chứa chữ "flash" hay không
+            if (cat === 'flash-sale' || cat.includes('flash')) {
+                flashSaleItems.push(item);
+            } else {
+                regularMenu.push(item);
+            }
+        });
+
+        // 1. Hiển thị Flash Sale
+        if (typeof renderFlashSale === 'function') {
+            renderFlashSale(flashSaleItems); 
+        }
+
+        // 2. Hiển thị Menu Thường (Lưu vào biến lọc để search hoạt động)
+        allMenuItems = regularMenu; 
+        renderMenu(regularMenu); 
+
+    } catch (error) {
+        console.error("❌ Lỗi tải menu:", error);
+    }
+}
     fetchMenu(); // Chạy ngay khi vào trang
     
-    // ... Các code khác giữ nguyên ...
+  
 });
 
 // --- 3. HÀM LỌC DANH MỤC (ĐÃ SỬA LỖI MẤT MÓN) ---
@@ -225,21 +256,53 @@ document.addEventListener("DOMContentLoaded", () => {
     // =============================================
     if (menuContainer && searchBox && categoryFilter) { 
         
-        async function fetchMenu() {
-            try {
-                const response = await fetch('/api/mon-an'); 
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                currentMenuItems = await response.json(); // Lưu dữ liệu API vào đây
-                if (!Array.isArray(currentMenuItems)) { 
-                   currentMenuItems = []; 
-                }
-                renderMenu(currentMenuItems); // Hiển thị tất cả ban đầu
-            } catch (error) {
-                console.error("Lỗi tải menu:", error);
-                menuContainer.innerHTML = '<p class="no-results" style="text-align: center; width: 100%;">Lỗi tải thực đơn. Vui lòng thử lại.</p>';
+async function fetchMenu() {
+    try {
+        const response = await fetch('/api/mon-an'); 
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const allData = await response.json(); 
+        
+        // 🔥 DÒNG QUAN TRỌNG MỚI THÊM VÀO ĐÂY 🔥
+        // Lưu toàn bộ danh sách món ăn (cả Flash Sale và món thường) vào bộ nhớ
+        // Để khi bấm đặt món, hệ thống có thể tìm thấy thông tin của nó.
+        localStorage.setItem("menuData", JSON.stringify(allData)); 
+        // ----------------------------------------
+
+        if (!Array.isArray(allData)) { currentMenuItems = []; } 
+        else { currentMenuItems = allData; }
+
+        console.log("🔥 Đã tải:", allData.length, "món.");
+
+        // ... (Phần logic lọc bên dưới GIỮ NGUYÊN) ...
+        const flashSaleItems = [];
+        const regularMenu = [];
+
+        allData.forEach(item => {
+            const cat = item.category ? item.category.toLowerCase().trim() : "";
+            if (cat === 'flash-sale' || cat.includes('flash')) {
+                flashSaleItems.push(item);
+            } else {
+                regularMenu.push(item);
             }
+        });
+
+        // 1. Vẽ Flash Sale
+        if (typeof renderFlashSale === 'function') {
+            renderFlashSale(flashSaleItems); 
         }
 
+        // 2. Vẽ Menu chính
+        allMenuItems = regularMenu; ``
+        
+        // Lưu ý: Hàm renderMenu cũ có lệnh lưu localStorage, 
+        // nhưng dòng lệnh mới thêm ở trên đã lo việc đó rồi nên không sao cả.
+        renderMenu(regularMenu); 
+
+    } catch (error) {
+        console.error("❌ Lỗi tải menu:", error);
+    }
+}
  window.allMenuItems = []; // tạo biến toàn cục
 
 
@@ -1318,3 +1381,38 @@ setInterval(() => {
         timerDisplay.innerHTML = `<span>${h < 10 ? '0'+h : h}</span>:<span>${m < 10 ? '0'+m : m}</span>:<span>${s < 10 ? '0'+s : s}</span>`;
     }
 }, 1000);
+// ==========================================================
+// 🔥 HÀM RENDER FLASH SALE (BẠN ĐANG THIẾU CÁI NÀY) 🔥
+// ==========================================================
+function renderFlashSale(items) {
+    const container = document.querySelector('.horizontal-scroll');
+    // Nếu trang này không có khung Flash Sale (ví dụ trang Admin) thì dừng
+    if (!container) return; 
+
+    // Nếu không có món nào
+    if (!items || items.length === 0) {
+        container.innerHTML = '<p style="padding:20px; color:#999; text-align:center; min-width: 200px;">Chưa có deal hot hôm nay 🔥</p>';
+        return;
+    }
+
+    container.innerHTML = items.map(item => {
+        // Tạo giá cũ giả vờ (tăng 30% để nhìn hấp dẫn)
+        const oldPrice = item.price * 1.3; 
+        
+        return `
+        <div class="mini-card" onclick="addToClientCart('${item._id}')">
+            <div class="mini-img">
+                <img src="${item.image || 'https://via.placeholder.com/150'}" alt="${item.name}">
+                <span class="sale-tag">HOT</span>
+            </div>
+            <div class="mini-info">
+                <h4>${item.name}</h4>
+                <div class="price-box">
+                    <span class="new-price">${item.price.toLocaleString('vi-VN')}đ</span>
+                    <span class="old-price">${oldPrice.toLocaleString('vi-VN')}đ</span>
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}

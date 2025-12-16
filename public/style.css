@@ -31,20 +31,18 @@
     }
 
     /* ===== BODY ===== */
-    body {
-        font-family: "Poppins", sans-serif;
-        background: var(--bg-color);
-        color: var(--text-color);
-        line-height: 1.6;
-        font-size: 16px;
-        transition: background 0.3s, color 0.3s;
-    }
+    
+body {
+    font-family: "Poppins", sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    
+    /* 🔥 THÊM DÒNG NÀY 🔥 */
+    padding-top: 100px; /* Khoảng cách bằng chiều cao của Header */
+}
 
-    /* ===== HEADER ===== */
-   /* Trong style.css */
-
-/* --- HEADER DÍNH CHẶT (FIXED TOP) --- */
-
+  /* --- HEADER CỐ ĐỊNH (FIXED) - LUÔN NỔI TRÊN CÙNG --- */
 header {
     background: linear-gradient(135deg, #ff7043, #ff9966);
     color: white;
@@ -52,12 +50,19 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2.5rem;
-    
-    /* Thuộc tính giúp dính chặt */
-    position: sticky; 
+
+    /* 🔥 THAY ĐỔI QUAN TRỌNG Ở ĐÂY 🔥 */
+    position: fixed; /* Đổi từ sticky sang fixed */
     top: 0;
-    z-index: 1000;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    left: 0;
+    width: 100%;     /* Bắt buộc phải có để trải rộng hết màn hình */
+    z-index: 10000;  /* Tăng chỉ số này lên cao nhất để không ai đè được */
+    
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    
+    /* Nếu muốn bo góc dưới thì giữ lại, không thì xóa 2 dòng dưới */
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
 }
 header .logo { /* Đảm bảo có CSS cho .logo */
     font-size: 1.5rem; /* Hoặc 1.6rem tùy ý */
@@ -1892,121 +1897,260 @@ body.dark-mode select {
     color: #777;
     font-size: 0.9rem;
 }
-/* --- KHẮC PHỤC GIAO DIỆN BỊ "LOÃNG" --- */
-
-/* 1. Đổi màu nền toàn bộ trang web sang xám nhạt */
-body {
-    background-color: #f4f6f8; /* Màu xám xanh rất sang, dịu mắt */
+/* --- FOOTER MÀU TỐI (SANG TRỌNG) --- */
+footer.modern-footer {
+    background: #1a1a1a !important; /* Đổi sang màu đen xám */
+    color: #b0b0b0; /* Chữ màu xám bạc dễ đọc */
+    padding: 60px 20px 30px;
+    margin-top: 50px;
+    border-radius: 0 !important; /* Footer phải vuông góc, không bo tròn */
+    box-shadow: none; /* Bỏ bóng đổ */
 }
 
-/* 2. Biến các phần tử thành các "Thẻ Bài" (Card) nổi lên */
-.section-container,     /* Flash Sale, Voucher */
-.menu-grid,            /* Lưới món ăn */
-.hero-banner,          /* Ảnh bìa to */
-.category-scroll {     /* Thanh icon danh mục */
-    background: #ffffff; /* Nền trắng tinh */
-    
-    /* Tạo khoảng cách tách biệt */
-    margin-bottom: 25px; 
-    padding-top: 25px;
-    padding-bottom: 25px;
-    
-    /* 🔥 Hiệu ứng nổi khối */
-    border-radius: 16px; /* Bo góc tròn trịa hơn */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); /* Bóng mờ nhẹ */
-    border: 1px solid rgba(0,0,0,0.02); /* Viền siêu mờ */
-    
-    /* Canh giữa đẹp hơn */
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-/* Riêng cái Banner cho dính sát header hoặc cách 1 chút */
-.hero-banner {
-    margin-top: 20px; 
-}
-/* ========================================= */
-/* === KHẮC PHỤC GIAO DIỆN "LOÃNG" (QUAN TRỌNG) === */
-/* ========================================= */
-
-/* 1. Đổi nền web sang màu Xám Nhạt (Chuẩn ShopeeFood/Facebook) */
-body {
-    background-color: #f0f2f5 !important; /* Dùng !important để ép đổi màu */
-}
-
-/* 2. Biến các phần (Banner, Flash Sale, Menu) thành các "Hộp Trắng" riêng biệt */
-.hero-banner, 
-.section-container, /* Bao gồm Flash Sale & Voucher */
-.menu-grid, 
-.category-scroll {
-    background: #ffffff; /* Nền trắng tinh */
-    
-    /* Canh giữa và giới hạn chiều rộng */
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
-    
-    /* Tạo khoảng cách tách biệt giữa các khối */
-    margin-bottom: 20px; 
-    padding: 20px;
-    
-    /* 🔥 Hiệu ứng nổi khối 3D nhẹ (Card Effect) */
-    border-radius: 12px; /* Bo tròn góc */
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); /* Bóng mờ nhẹ */
-    border: none;
-}
-
-/* Riêng Banner: Cần cách header một chút cho đẹp */
-.hero-banner {
-    padding: 0; 
-    overflow: hidden; /* Cắt gọn ảnh thừa */
-    height: 280px; /* Cố định chiều cao */
-    margin-top: 20px; 
-}
-/* ✅ DÁN VÀO CUỐI FILE style.css */
-
-/* 1. Ép nền web thành màu Xám */
-body {
-    background-color: #f0f2f5 !important;
-}
-
-/* 2. Biến các phần nội dung thành khối Trắng nổi lên */
-.section-container, 
-.menu-grid, 
-.hero-banner, 
-.category-scroll {
-    background-color: #ffffff !important; /* Nền trắng */
-    border-radius: 12px !important;       /* Bo góc */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; /* Bóng đổ */
-    
-    /* Căn chỉnh khoảng cách */
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
-    margin-bottom: 20px;
-    padding: 20px;
-}
-
-/* 3. Chỉnh lại Banner cho đẹp */
-.hero-banner {
-    padding: 0 !important;
-    overflow: hidden;
-    margin-top: 20px;
-}
-
-/* 4. Style cho Footer mới thêm */
-.modern-footer {
-    background-color: #222;
-    color: #fff;
-    padding: 40px 20px;
-    margin-top: 40px;
-}
 .footer-content {
-    display: flex;
-    justify-content: space-around;
     max-width: 1200px;
     margin: 0 auto;
+    display: grid;
+    /* Chia 3 cột đều nhau */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    border-bottom: 1px solid #333; /* Đường kẻ mờ ngăn cách */
+    padding-bottom: 40px;
 }
-.footer-col h3 { color: #ff7043; }
-.footer-col a { color: #bbb; text-decoration: none; }
+
+.footer-col h3 {
+    color: #fff; /* Tiêu đề màu trắng nổi bật */
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.footer-col p {
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.footer-col ul {
+    list-style: none;
+    padding: 0;
+}
+
+.footer-col ul li {
+    margin-bottom: 12px;
+}
+
+.footer-col ul li a {
+    color: #b0b0b0;
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+.footer-col ul li a:hover {
+    color: #ff7043; /* Hover vào thì hiện màu cam */
+    padding-left: 5px; /* Hiệu ứng đẩy chữ sang phải */
+}
+
+.social-links a {
+    font-size: 1.5rem;
+    margin-right: 15px;
+    color: #fff;
+    transition: 0.3s;
+}
+
+.social-links a:hover {
+    color: #ff7043;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 25px;
+    font-size: 0.9rem;
+    color: #666;
+}
+/* ==========================================================================
+   GIAO DIỆN MENU CHÍNH MỚI (MODERN GRID LAYOUT)
+   ========================================================================== */
+
+/* 1. Container dạng lưới */
+.modern-grid-menu#menuContainer {
+    display: grid;
+    /* Tự động chia cột, mỗi cột tối thiểu 240px, tối đa 1 phần không gian */
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 25px; /* Khoảng cách giữa các thẻ */
+    padding: 20px 0;
+}
+
+/* 2. Thẻ món ăn mới (Dạng dọc) */
+.food-card.modern-card {
+    display: flex;
+    flex-direction: column; /* Sắp xếp từ trên xuống dưới */
+    background: #fff;
+    border-radius: 16px; /* Bo góc tròn trịa hơn */
+    overflow: hidden; /* Ẩn phần ảnh thừa ra ngoài */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* Đổ bóng nhẹ, hiện đại */
+    transition: all 0.3s ease; /* Hiệu ứng mượt mà */
+    border: none; /* Bỏ viền cũ */
+    height: 100%; /* Để các thẻ bằng nhau trên 1 hàng */
+}
+
+/* Hiệu ứng khi di chuột vào thẻ */
+.food-card.modern-card:hover {
+    transform: translateY(-7px); /* Nổi lên trên */
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15); /* Bóng đổ sâu hơn */
+}
+
+/* 3. Phần hình ảnh */
+.modern-card .card-image-wrapper {
+    width: 100%;
+    height: 180px; /* Chiều cao cố định cho ảnh */
+    position: relative;
+    flex-shrink: 0; /* Không cho ảnh bị co lại */
+}
+
+.modern-card .card-image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ảnh phủ kín khung, không bị méo */
+    transition: transform 0.5s ease;
+}
+
+/* Hiệu ứng phóng to ảnh khi hover */
+.modern-card:hover .card-image-wrapper img {
+    transform: scale(1.08);
+}
+
+/* Huy hiệu yêu thích */
+/* Huy hiệu yêu thích (Sửa lại để nằm bên trái giống ảnh mẫu) */
+.modern-card .badge-favorite {
+    position: absolute;
+    top: 10px;
+    left: 10px; /* 👈 Đổi từ right sang left */
+    background: #fff; /* Nền trắng */
+    color: #ff4757; /* Chữ đỏ */
+    padding: 4px 10px;
+    border-radius: 20px; /* Bo tròn viên thuốc */
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+/* 4. Phần thông tin món ăn */
+.modern-card .card-info {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Chiếm hết không gian còn lại */
+    justify-content: space-between; /* Đẩy phần giá xuống đáy */
+}
+
+.modern-card .food-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 10px 0;
+    /* Giới hạn tên món trong 2 dòng, nếu dài quá thì hiện dấu ... */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+}
+
+.modern-card .food-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #777;
+    margin-bottom: 15px;
+}
+
+.modern-card .star-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* 5. Phần giá và nút thêm */
+.modern-card .price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto; /* Đảm bảo luôn nằm ở đáy thẻ */
+}
+
+.modern-card .current-price {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #ff5722; /* Màu cam chủ đạo */
+}
+
+.modern-card .btn-quick-add {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%; /* Hình tròn */
+    background: linear-gradient(135deg, #ff5722, #ff8a65); /* Màu gradient đẹp mắt */
+    color: white;
+    border: none;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(255, 87, 34, 0.3);
+    padding: 0;
+}
+
+.modern-card .btn-quick-add:hover {
+    transform: scale(1.1); /* Phóng to nhẹ nút khi hover */
+    box-shadow: 0 6px 15px rgba(255, 87, 34, 0.5);
+}
+
+.modern-card .btn-quick-add:active {
+    transform: scale(0.95); /* Nhấn xuống khi click */
+}
+
+/* Responsive cho màn hình nhỏ (Mobile) */
+@media (max-width: 576px) {
+    .modern-grid-menu#menuContainer {
+        grid-template-columns: 1fr; /* 1 cột duy nhất trên mobile */
+        gap: 15px;
+    }
+    
+    .food-card.modern-card {
+        /* Trên mobile có thể để nằm ngang lại nếu muốn tiết kiệm chiều dọc, 
+           nhưng dạng dọc vẫn đẹp hơn */
+           flex-direction: row;
+           height: auto;
+    }
+
+    .modern-card .card-image-wrapper {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .modern-card .card-info {
+        padding: 12px;
+    }
+    
+    .modern-card .badge-favorite {
+        display: none; /* Ẩn trên mobile cho gọn */
+    }
+}
+/* --- TỐI ƯU HIỂN THỊ TRÊN ĐIỆN THOẠI --- */
+@media (max-width: 768px) {
+    header {
+        /* Giảm lề trái phải xuống còn 1rem (khoảng 16px) cho gọn */
+        padding: 1rem 1rem; 
+    }
+    
+    header .logo {
+        font-size: 1.2rem; /* Thu nhỏ logo một chút cho cân đối */
+    }
+}
