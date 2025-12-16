@@ -747,8 +747,13 @@ window.editMenuItem = function(id, name, price, image, category) {
 
 function addToClientCart(id) {
     const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+    // Kiểm tra đăng nhập
     if (!userInfo || userInfo.role !== "user") {
         showToast("⚠️ Vui lòng đăng nhập tài khoản khách hàng trước khi đặt món!");
+        // Nếu trên mobile, có thể mở modal đăng nhập luôn cho tiện
+        if(window.innerWidth <= 768 && document.getElementById('auth-modal')) {
+             document.getElementById('auth-modal').style.display = 'flex';
+        }
         return;
     }
 
@@ -763,13 +768,23 @@ function addToClientCart(id) {
     const existing = cart.find(i => i._id === id);
 
     if (existing) {
-        existing.quantity += 1;
+        // Nếu có rồi thì tăng số lượng
+        existing.quantity = (existing.quantity || existing.qty || 0) + 1;
     } else {
+        // Nếu chưa có thì thêm mới
         cart.push({ ...item, quantity: 1 });
     }
 
+    // Lưu vào bộ nhớ
     localStorage.setItem("clientCart", JSON.stringify(cart));
+    
+    // Hiện thông báo
     showToast(`✅ Đã thêm "${item.name}" vào giỏ hàng!`);
+
+    // 🔥 THÊM DÒNG NÀY ĐỂ CẬP NHẬT SỐ TRÊN THANH MENU MOBILE NGAY LẬP TỨC 🔥
+    if (typeof updateMobileCartCount === 'function') {
+        updateMobileCartCount();
+    }
 }
 
 function showToast(message) {
@@ -1416,3 +1431,20 @@ function renderFlashSale(items) {
         `;
     }).join('');
 }
+// Hàm tính tổng số lượng món để hiện lên chấm đỏ
+function updateMobileCartCount() {
+    const cart = JSON.parse(localStorage.getItem("clientCart")) || [];
+    // Cộng dồn số lượng (quantity) của từng món
+    const count = cart.reduce((sum, item) => sum + (item.quantity || item.qty || 1), 0);
+    
+    // Tìm cái chấm đỏ và gán số vào
+    const badge = document.getElementById('mobile-cart-count');
+    if(badge) {
+        badge.innerText = count;
+        // Nếu số lượng > 0 thì hiện, = 0 thì ẩn đi cho gọn
+        badge.style.display = count > 0 ? 'block' : 'none';
+    }
+}
+
+// Gọi hàm này ngay khi tải trang để hiện số cũ (nếu có)
+document.addEventListener('DOMContentLoaded', updateMobileCartCount);
