@@ -21,22 +21,31 @@ document.addEventListener("DOMContentLoaded", function () {
     // --- 3. TẠO GIAO DIỆN CHAT (Giữ nguyên) ---
     if (!document.getElementById('ai-chat-widget')) {
         const chatHTML = `
-        <div id="ai-chat-widget" style="z-index: 10000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+      <div id="ai-chat-widget" style="position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;">
             <button id="ai-toggle-btn" style="
-                position: fixed; bottom: 20px; right: 20px; 
+              position: fixed; bottom: 90px; right: 20px; z-index: 2147483647;
                 width: 60px; height: 60px; border-radius: 50%; 
                 background: linear-gradient(135deg, #ff6b6b, #ff4757); 
                 color: white; border: none; font-size: 28px; 
                 cursor: pointer; box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
                 transition: transform 0.2s;">💬</button>
             
-            <div id="ai-chat-window" style="
-                position: fixed; bottom: 90px; right: 20px; 
-                width: 350px; height: 500px; 
-                background: white; border-radius: 15px; 
-                box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
-                display: none; flex-direction: column; overflow: hidden;
-                border: 1px solid #f1f1f1;">
+           <div id="ai-chat-window" style="
+    position: fixed !important; 
+    bottom: 80px !important;    /* Khoảng cách vừa đủ trên thanh menu */
+    right: 10px !important;     /* Sát mép phải một chút để chừa khoảng trống bên trái */
+    width: 320px;               /* Thu nhỏ chiều rộng lại (cũ là 350px) */
+    max-width: 85vw;            /* Không bao giờ chiếm quá 85% bề ngang điện thoại */
+    height: 50vh;               /* Giảm chiều cao xuống còn 50% màn hình (cũ là 65vh-500px) */
+    max-height: 400px;          /* Giới hạn chiều cao tối đa không quá 400px */
+    z-index: 2147483647 !important; 
+    background: white; 
+    border-radius: 15px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15); 
+    display: none; 
+    flex-direction: column; 
+    overflow: hidden;
+    border: 1px solid #f1f1f1;">
                 
                 <div style="background: linear-gradient(135deg, #ff6b6b, #ff4757); color: white; padding: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 16px;">🤖 Trợ lý FoodBot</span> 
@@ -113,13 +122,18 @@ document.addEventListener("DOMContentLoaded", function () {
     toggleBtn.onmouseover = () => toggleBtn.style.transform = 'scale(1.1)';
     toggleBtn.onmouseout = () => toggleBtn.style.transform = 'scale(1)';
 
-    toggleBtn.onclick = () => {
-        chatWindow.style.display = 'flex';
-        toggleBtn.style.display = 'none';
-        input.focus();
-        // Cuộn xuống cuối khi mở
+ toggleBtn.onclick = () => {
+    chatWindow.style.display = 'flex';
+    toggleBtn.style.display = 'none';
+    
+    // Thêm dòng này để ngăn trang chủ bị cuộn khi mở Chat trên một số trình duyệt mobile
+    // messages.scrollTop = messages.scrollHeight; 
+    
+    // Chỉ cuộn nội dung tin nhắn sau một khoảng trễ rất nhỏ để tránh xung đột layout
+    setTimeout(() => {
         messages.scrollTop = messages.scrollHeight;
-    };
+    }, 100);
+};
     closeBtn.onclick = () => {
         chatWindow.style.display = 'none';
         toggleBtn.style.display = 'block';

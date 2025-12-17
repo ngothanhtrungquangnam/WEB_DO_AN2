@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Giỏ Hàng - Quản Lý Quán Ăn</title>
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
     <style>
+        /* Đẩy nội dung lên để không bị thanh menu dưới che mất */
+        body { padding-bottom: 90px; }
+
         .cart-summary .cart-input { box-sizing: border-box; width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.95rem; font-family: inherit; }
         textarea.cart-input { min-height: 60px; resize: vertical; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
@@ -28,21 +33,104 @@
         .btn-chon-ban { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9rem; white-space: nowrap; transition: background-color 0.2s ease; }
         .btn-chon-ban:hover { background-color: #0056b3; }
 
-        .payment-method-section {
-            margin-top: 15px;
-            margin-bottom: 15px;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-        }
+        .payment-method-section { margin-top: 15px; margin-bottom: 15px; border-top: 1px solid #eee; padding-top: 15px; }
         .modal-content .payment-method-section { border-top: none; padding-top: 0; }
         .payment-method-option { display: flex; align-items: center; gap: 12px; border: 1px solid #ddd; padding: 12px; border-radius: 8px; cursor: pointer; transition: background-color 0.15s; user-select: none; }
         .payment-method-option:hover { background-color: #f9f9f9; }
         .payment-method-option input[type="radio"] { margin: 0; transform: scale(1.2); position: relative; z-index: 5; cursor: pointer; }
         .payment-method-option div { width: 100%; cursor: pointer; }
         #paymentModal .modal-content { z-index: 1010; position: relative; }
-
         footer { text-align: center; padding: 20px; margin-top: 20px; background-color: #f4f4f4; }
     </style>
+    <style>
+   /* --- CSS CHO MENU TRƯỢT TỪ DƯỚI LÊN (BOTTOM SHEET) --- */
+
+/* 1. Lớp nền tối mờ (Overlay) */
+.utility-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5); /* Màu đen mờ 50% */
+    z-index: 9998; /* Nằm dưới menu nhưng trên các cái khác */
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(2px); /* Làm mờ nhẹ hậu cảnh cho đẹp */
+}
+.utility-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 2. Bản thân cái Menu (Sheet) */
+.utility-bottom-sheet {
+    position: fixed;
+    bottom: -100%; /* Mặc định giấu xuống dưới đáy */
+    left: 0;
+    width: 100%;
+    background: white;
+    border-radius: 20px 20px 0 0; /* Bo tròn 2 góc trên */
+    z-index: 9999;
+    padding-bottom: 20px; /* Chừa chỗ ở dưới cho đẹp */
+    box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
+    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Hiệu ứng trượt mượt */
+}
+.utility-bottom-sheet.show {
+    bottom: 0; /* Trượt lên vị trí 0 */
+}
+
+/* 3. Thanh gạch ngang nhỏ (Handle) để trang trí */
+.sheet-handle {
+    width: 40px;
+    height: 4px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
+    margin: 12px auto; /* Căn giữa */
+}
+
+/* 4. Tiêu đề menu */
+.utility-title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: #333;
+    padding: 5px 0 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* 5. Các nút bấm (Item) */
+.utility-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px; /* Nút to, dễ bấm */
+    text-decoration: none;
+    color: #333;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+.utility-item:active {
+    background-color: #f5f5f5; /* Hiệu ứng khi bấm vào */
+}
+.utility-item i {
+    font-size: 1.4rem;
+    margin-right: 16px;
+    color: #ff6b6b;
+    width: 25px; /* Cố định chiều rộng icon để chữ thẳng hàng */
+    text-align: center;
+}
+
+/* 6. Nút đóng (Option thêm) */
+.close-sheet-btn {
+    margin: 10px 20px 0;
+    padding: 12px;
+    text-align: center;
+    background: #f1f1f1;
+    border-radius: 12px;
+    color: #666;
+    font-weight: bold;
+    cursor: pointer;
+}
+</style>
 </head>
 <body>
     <div id="navbar-placeholder"></div>
@@ -96,7 +184,6 @@
         <div class="modal-content" style="max-width: 500px;">
             <span id="closePaymentModal" class="modal-close">&times;</span>
             <h2>Chọn phương thức thanh toán</h2>
-
             <div class="payment-method-section">
                 <label class="payment-method-option" for="pay-cod" id="label-cod">
                     <input type="radio" id="pay-cod" name="paymentMethodModal" value="cod" checked>
@@ -105,9 +192,7 @@
                         <small>Gửi đơn cho bếp và thanh toán sau</small>
                     </div>
                 </label>
-
                 <label class="payment-method-option" for="pay-zalopay" id="label-zalopay" style="margin-top: 15px;">
-                  
                     <input type="radio" id="pay-zalopay" name="paymentMethodModal" value="zalopay">
                     <div style="flex:1;">
                         <strong>Thanh toán Online ngay (ZaloPay)</strong>
@@ -122,7 +207,47 @@
         <p>© 2025 Quán Ăn Ngon 24h</p>
     </footer>
 
+  <div id="utility-overlay" class="utility-overlay" onclick="closeUtilityMenu()"></div>
+<div id="utility-overlay" class="utility-overlay" onclick="closeUtilityMenu()"></div>
+
+<div id="utility-menu" class="utility-bottom-sheet">
+    <div class="sheet-handle"></div>
+    
+    <div class="utility-title">Tiện ích mở rộng</div>
+    
+    <a href="order-progress.html" class="utility-item">
+        <i class="bi bi-hourglass-split"></i> 
+        <span>Tiến trình đơn hàng</span>
+    </a>
+    
+    <a href="order-history.html" class="utility-item">
+        <i class="bi bi-clock-history"></i> 
+        <span>Lịch sử đặt món</span>
+    </a>
+
+    <div class="close-sheet-btn" onclick="closeUtilityMenu()">Đóng</div>
+</div>
+<div id="bottom-nav-placeholder"></div>
+
+<script>
+    function toggleUtilityMenu() {
+        const menu = document.getElementById('utility-menu');
+        if (!menu) return;
+        menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
+        if (menu.style.display === 'flex') menu.classList.add('show');
+    }
+    document.addEventListener('click', function(event) {
+        const menu = document.getElementById('utility-menu');
+        const btn = document.getElementById('nav-utility');
+        if (menu && menu.style.display === 'flex' && !menu.contains(event.target) && (btn && !btn.contains(event.target))) {
+            menu.style.display = 'none';
+        }
+    });
+</script>
+
     <script src="script.js" defer></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/chatbox.js"></script>
 
     <script>
         // === BIẾN GLOBAL ===
@@ -157,57 +282,54 @@
         function closeTableModal() {
             document.getElementById('tableModal').style.display = 'none';
         }
-     // --- TRONG FILE order.html (THAY THẾ HÀM loadTableMap CŨ) ---
-async function loadTableMap() {
-    const mapContainer = document.getElementById('tableMapContainer');
-    mapContainer.innerHTML = '<p>Đang tải sơ đồ bàn...</p>';
-    try {
-        const response = await fetch('/api/ban');
-        if (!response.ok) throw new Error('Không thể tải sơ đồ bàn');
-        let banList = await response.json(); // Lấy dữ liệu
-
-        // 👇👇👇 THÊM LOGIC SẮP XẾP VÀO ĐÂY (Sắp xếp theo số) 👇👇👇
-        banList.sort((a, b) => {
-            // Lấy con số trong tên bàn (Ví dụ "Bàn 5" -> lấy số 5)
-            const numA = parseInt(a.soBan.match(/\d+/)?.[0] || 0);
-            const numB = parseInt(b.soBan.match(/\d+/)?.[0] || 0);
-            return numA - numB; // Sắp xếp tăng dần (1, 2, ... 10)
-        });
-        // 👆👆👆 KẾT THÚC LOGIC SẮP XẾP 👆👆👆
-
-
-        mapContainer.innerHTML = ''; // Xóa chữ "Đang tải"
         
-        banList.forEach(ban => {
-            const tableDiv = document.createElement('div');
-            tableDiv.className = 'table-item';
-            tableDiv.id = `ban-${ban._id}`;
-            tableDiv.dataset.id = ban._id;
-            tableDiv.textContent = ban.soBan;
-            
-            if (ban.trangThai === 'Trống') {
-                tableDiv.classList.add('status-trong');
-                tableDiv.addEventListener('click', () => selectBan(ban._id, ban.soBan));
-            } else {
-                tableDiv.classList.add('status-dang-phuc-vu');
-                // Nếu bàn có khách thì không cho chọn
-                // (Giữ nguyên logic cũ của bạn)
+        // --- HÀM LOAD TABLE MAP (GIỮ NGUYÊN) ---
+        async function loadTableMap() {
+            const mapContainer = document.getElementById('tableMapContainer');
+            mapContainer.innerHTML = '<p>Đang tải sơ đồ bàn...</p>';
+            try {
+                const response = await fetch('/api/ban');
+                if (!response.ok) throw new Error('Không thể tải sơ đồ bàn');
+                let banList = await response.json(); // Lấy dữ liệu
+
+                // Sắp xếp theo số
+                banList.sort((a, b) => {
+                    const numA = parseInt(a.soBan.match(/\d+/)?.[0] || 0);
+                    const numB = parseInt(b.soBan.match(/\d+/)?.[0] || 0);
+                    return numA - numB; 
+                });
+
+                mapContainer.innerHTML = ''; // Xóa chữ "Đang tải"
+                
+                banList.forEach(ban => {
+                    const tableDiv = document.createElement('div');
+                    tableDiv.className = 'table-item';
+                    tableDiv.id = `ban-${ban._id}`;
+                    tableDiv.dataset.id = ban._id;
+                    tableDiv.textContent = ban.soBan;
+                    
+                    if (ban.trangThai === 'Trống') {
+                        tableDiv.classList.add('status-trong');
+                        tableDiv.addEventListener('click', () => selectBan(ban._id, ban.soBan));
+                    } else {
+                        tableDiv.classList.add('status-dang-phuc-vu');
+                    }
+                    // Thêm số khách
+                    if (ban.soKhach > 0) {
+                        const guestSpan = document.createElement('span');
+                        guestSpan.className = 'guest-count';
+                        guestSpan.textContent = ban.soKhach;
+                        tableDiv.appendChild(guestSpan);
+                    }
+                    
+                    mapContainer.appendChild(tableDiv);
+                });
+            } catch (err) {
+                console.error(err);
+                mapContainer.innerHTML = `<p style="color:red;">${err.message}</p>`;
             }
-            // Thêm số khách (Giữ nguyên logic cũ)
-            if (ban.soKhach > 0) {
-                 const guestSpan = document.createElement('span');
-                 guestSpan.className = 'guest-count';
-                 guestSpan.textContent = ban.soKhach;
-                 tableDiv.appendChild(guestSpan);
-            }
-            
-            mapContainer.appendChild(tableDiv);
-        });
-    } catch (err) {
-        console.error(err);
-        mapContainer.innerHTML = `<p style="color:red;">${err.message}</p>`;
-    }
-}
+        }
+
         function selectBan(banId, soBan) {
             selectedBanId = banId;
             document.getElementById('selectedTableDisplay').value = soBan;
@@ -237,8 +359,7 @@ async function loadTableMap() {
         }
 
         // ==========================================================
-        // 🔥 HÀM MỚI: XỬ LÝ CHỌN THANH TOÁN & HIỆN QR CODE 🔥
-        // (Thay thế đoạn cũ trong order.html)
+        // 🔥 HÀM XỬ LÝ SỰ KIỆN THANH TOÁN (GIỮ NGUYÊN) 🔥
         // ==========================================================
         function addPaymentModalListeners() {
             const btnChonThanhToan = document.getElementById('btnChonThanhToan');
@@ -257,25 +378,19 @@ async function loadTableMap() {
             const inputCod = document.getElementById('pay-cod');
             const inputZalo = document.getElementById('pay-zalopay');
 
-     // 2. Hàm xử lý logic khi chọn phương thức (ĐÃ SỬA LẠI: KHÔNG HIỆN QR NỮA)
+            // 2. Hàm xử lý logic khi chọn phương thức
             function handlePaymentSelection(method, text) {
-                // Cập nhật biến toàn cục
                 selectedPaymentMethod = method;
                 
-                // Cập nhật text hiển thị bên ngoài
                 const displayInput = document.getElementById('selectedPaymentDisplay');
                 if(displayInput) displayInput.value = text;
                 
                 const errorMsg = document.getElementById('paymentError');
                 if(errorMsg) errorMsg.style.display = 'none';
 
-                // Đồng bộ nút Radio (đảm bảo nó được check)
                 if (method === 'cod' && inputCod) inputCod.checked = true;
                 if (method === 'zalopay' && inputZalo) inputZalo.checked = true;
 
-                // ❌ ĐÃ XÓA ĐOẠN HIỂN THỊ QR Ở ĐÂY ❌
-                
-                // Tự động đóng modal sau khi chọn cho tiện (Tùy chọn)
                 setTimeout(() => closePaymentModal(), 200); 
             }
 
@@ -303,11 +418,12 @@ async function loadTableMap() {
                 });
             }
             
-            // 5. Kích hoạt trạng thái mặc định (nếu load trang đã check sẵn)
+            // 5. Kích hoạt trạng thái mặc định
             if (inputCod && inputCod.checked) {
                 handlePaymentSelection('cod', 'Thanh toán tại quầy');
             }
         }
+
         // === Hàm chính ===
         function runPageLogic() {
             const cartContainer = document.getElementById("cartContainer");
@@ -352,8 +468,6 @@ async function loadTableMap() {
                     navAdminLink.style.display = "none";
                     authButton.addEventListener("click", () => { window.location.href = "login.html"; });
                 }
-            } else {
-                console.error("Lỗi: Không tìm thấy các nút header trong runPageLogic.");
             }
 
             // hiển thị giỏ
@@ -419,62 +533,53 @@ async function loadTableMap() {
                         // 1) Tạo DonHang
                         const apiEndpoint = window.location.origin + '/api/donhang/create';
                         const response = await fetch(apiEndpoint, {
-  method: 'POST',
-  headers: { 
-      'Content-Type': 'application/json', 
-      'Authorization': `Bearer ${userInfo.token}` 
-  },
-  body: JSON.stringify(orderData) 
-});
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json', 
+                                'Authorization': `Bearer ${userInfo.token}` 
+                            },
+                            body: JSON.stringify(orderData) 
+                        });
 
-const createOrderResult = await response.json();
+                        const createOrderResult = await response.json();
 
-if (!response.ok) {
-  // nếu backend trả lỗi khi tạo đơn
-  throw new Error(createOrderResult.message || 'Lỗi khi tạo đơn hàng');
-}
+                        if (!response.ok) {
+                            throw new Error(createOrderResult.message || 'Lỗi khi tạo đơn hàng');
+                        }
 
-// Nếu là COD -> như cũ
-if (paymentMethod === 'cod') {
-    showToast("✅ Đơn hàng đã được gửi thành công!");
-    localStorage.removeItem("clientCart");
-    
-    // 👇👇👇 SỬA DÒNG NÀY 👇👇👇
-    // Chuyển hướng kèm theo tham số ?newOrder=...
-    window.location.href = `/order-progress.html?newOrder=${createOrderResult.donHang._id}`;
-    // 👆👆👆 ---------------- 👇👇👇
-    
-    return;
-}
+                        // Nếu là COD -> như cũ
+                        if (paymentMethod === 'cod') {
+                            showToast("✅ Đơn hàng đã được gửi thành công!");
+                            localStorage.removeItem("clientCart");
+                            window.location.href = `/order-progress.html?newOrder=${createOrderResult.donHang._id}`;
+                            return;
+                        }
 
-// Nếu là ZaloPay -> gọi API tạo link
-if (paymentMethod === 'zalopay') {
-  // gọi route mới để tạo link ZaloPay
-  const payResp = await fetch(window.location.origin + '/api/payment/zalopay/create', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${userInfo.token}`
-    },
-    body: JSON.stringify({ orderId: createOrderResult.donHang._id, amount: createOrderResult.donHang.totalPrice })
-  });
+                        // Nếu là ZaloPay -> gọi API tạo link
+                        if (paymentMethod === 'zalopay') {
+                            const payResp = await fetch(window.location.origin + '/api/payment/zalopay/create', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${userInfo.token}`
+                                },
+                                body: JSON.stringify({ orderId: createOrderResult.donHang._id, amount: createOrderResult.donHang.totalPrice })
+                            });
 
-  const payJson = await payResp.json();
-  if (!payResp.ok) {
-    throw new Error(payJson.message || payJson.error || 'Lỗi tạo link thanh toán');
-  }
+                            const payJson = await payResp.json();
+                            if (!payResp.ok) {
+                                throw new Error(payJson.message || payJson.error || 'Lỗi tạo link thanh toán');
+                            }
 
-  // redirect tới ZaloPay
-  if (payJson.paymentUrl) {
-    showToast('Đi tới cổng thanh toán ZaloPay...');
-    localStorage.removeItem("clientCart");
-    window.location.href = payJson.paymentUrl;
-    return;
-  } else {
-    throw new Error('Không nhận được paymentUrl từ server');
-  }
-}
-
+                            if (payJson.paymentUrl) {
+                                showToast('Đi tới cổng thanh toán ZaloPay...');
+                                localStorage.removeItem("clientCart");
+                                window.location.href = payJson.paymentUrl;
+                                return;
+                            } else {
+                                throw new Error('Không nhận được paymentUrl từ server');
+                            }
+                        }
 
                     } catch (err) {
                         console.error('Lỗi khi gửi đơn hàng:', err);
@@ -489,8 +594,7 @@ if (paymentMethod === 'zalopay') {
         // === INIT ===
         document.addEventListener('DOMContentLoaded', () => {
             userInfo = JSON.parse(localStorage.getItem("userInfo"));
-
-            let navbarFile = '/user-navbar.html';
+            let navbarFile = 'user-navbar.html';
             if (userInfo && userInfo.role === 'admin') {
                 navbarFile = '/admin-navbar.html';
             }
@@ -522,10 +626,45 @@ if (paymentMethod === 'zalopay') {
                         navbarPlaceholder.innerHTML = `<p style="color:red; text-align:center;">LỖI TẢI MENU (${error.message})</p>`;
                     }
                 });
+            
+            // Gọi hàm tải Bottom Navbar
+            loadBottomNavbar();
         });
-    </script>
-    <script src="/socket.io/socket.io.js"></script>
-<script src="js/chatbox.js"></script>
 
+        // === 🔥 HÀM TẢI BOTTOM NAVBAR (ĐÃ CHỈNH SỬA CLASS) 🔥 ===
+        async function loadBottomNavbar() {
+            const placeholder = document.getElementById('bottom-nav-placeholder');
+            if (!placeholder) return;
+
+            try {
+                // Tải file bottom-nav.html
+                const response = await fetch('bottom-nav.html');
+                if (!response.ok) throw new Error('Không tải được navbar dưới');
+                const html = await response.text();
+                placeholder.innerHTML = html;
+
+                // Sau khi tải xong, cập nhật lại số lượng giỏ hàng nếu cần
+                if (typeof updateMobileCartCount === 'function') {
+                    updateMobileCartCount();
+                }
+
+                const path = window.location.pathname;
+
+                // 🔥 QUAN TRỌNG: Tìm đúng class mobile-bottom-nav để tô màu
+                const navItems = document.querySelectorAll('.mobile-bottom-nav .nav-item, .bottom-navbar .nav-item');
+                navItems.forEach(el => el.classList.remove('active'));
+
+                if (path.includes('order.html')) {
+                    document.getElementById('nav-cart')?.classList.add('active');
+                } else {
+                    document.getElementById('nav-home')?.classList.add('active');
+                }
+
+            } catch (error) {
+                console.error("Lỗi tải bottom navbar:", error);
+            }
+        }
+    </script>
+    <script src="js/script.js"></script>
 </body>
 </html>

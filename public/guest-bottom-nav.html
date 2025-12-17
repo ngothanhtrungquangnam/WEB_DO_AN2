@@ -1,0 +1,38 @@
+<div class="guest-bottom-nav">
+    <a href="index.html" class="nav-item-single active">
+        <i class="bi bi-house-heart-fill"></i>
+        </a>
+</div>
+
+<style>
+    .guest-bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 65px;
+        background: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 -2px 20px rgba(0,0,0,0.1);
+        border-radius: 25px 25px 0 0;
+        z-index: 1000;
+    }
+    .nav-item-single {
+        color: #ff7043;
+        font-size: 1.8rem; /* Phóng to icon cho dễ bấm */
+        text-decoration: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 60px;
+        height: 60px;
+        transition: all 0.3s ease;
+    }
+    .nav-item-single.active {
+        color: #ff5722;
+        transform: translateY(-5px);
+        text-shadow: 0 4px 10px rgba(255, 87, 34, 0.3);
+    }
+</style>

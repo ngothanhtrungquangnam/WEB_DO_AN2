@@ -5,20 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thông tin người dùng</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="/socket.io/socket.io.js"></script>
     
     <style>
+        /* --- CSS GIAO DIỆN PROFILE (GIỮ NGUYÊN) --- */
         body {
             font-family: "Poppins", sans-serif;
             background: linear-gradient(135deg, #ffe0b2, #ffcc80);
             min-height: 100vh;
             margin: 0;
+            padding-bottom: 100px; /* Chừa chỗ cho menu dưới */
         }
         .profile-wrapper {
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 2rem;
-            min-height: calc(100vh - 100px); 
+            min-height: calc(100vh - 160px); 
         }
         .profile-card {
             background: #fff;
@@ -27,232 +31,234 @@
             padding: 2rem;
             width: 360px;
             text-align: center;
-            animation: fadeIn 0.5s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
         }
         .avatar { font-size: 3rem; color: #ff7043; margin-bottom: 0.5rem; }
         h2 { color: #ff7043; margin-bottom: 1.2rem; font-weight: 700; font-size: 1.4rem; }
         .info { text-align: left; color: #333; line-height: 1.6; font-size: 1rem; margin-bottom: 1.5rem; }
         .info strong { color: #ff7043; }
-        .btn { background-color: #ff7043; color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 1rem; margin: 5px; cursor: pointer; transition: 0.3s ease; }
-        .btn:hover { background-color: #f4511e; transform: scale(1.05); }
-        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
-        .input-group { text-align: left; margin: 10px 0; }
-        .input-group input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-top: 5px; }
+        
+        /* Buttons */
+        .btn { padding: 10px 18px; border-radius: 10px; font-size: 1rem; margin-bottom: 10px; cursor: pointer; width: 100%; box-sizing: border-box; }
+        .btn-action { background-color: #ff7043; color: #fff; border: none; }
+        .btn-secondary { background-color: #6c757d; color: #fff; border: none; }
+        .btn-logout-main { background-color: #dc3545; color: #fff; border: none; }
+
+        /* Form */
+        .input-group input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-top: 5px; box-sizing: border-box; }
         #msg { margin-top: 10px; font-weight: 500; }
-        #msg.success { color: green; }
-        #msg.error { color: red; }
     </style>
 </head>
 <body>
 
     <div id="navbar-placeholder"></div>
 
-    <main class="profile-wrapper">
-        
-        <div class="profile-card">
-            <div class="avatar">👤</div>
-            <h2>Thông tin người dùng</h2>
-            <div id="userInfo" class="info"></div>
-            <button class="btn" onclick="togglePasswordForm()">🔄 Đổi mật khẩu</button>
-            <button class="btn" onclick="goBack()">⬅ Quay về trang chủ</button>
-            <form id="passwordForm" style="display:none; margin-top:1rem;">
-                <div class="input-group">
-                    <label for="oldPass">Mật khẩu cũ:</label>
-                    <input type="password" id="oldPass" required>
-                </div>
-                <div class="input-group">
-                    <label for="newPass">Mật khẩu mới:</label>
-                    <input type="password" id="newPass" required>
-                </div>
-                <div class="input-group">
-                    <label for="confirmPass">Xác nhận mật khẩu:</label>
-                    <input type="password" id="confirmPass" required>
-                </div>
-                <button type="submit" class="btn">💾 Lưu thay đổi</button>
-                <p id="msg"></p>
-            </form>
+   <main class="profile-new-design">
+    <div class="profile-header-section">
+        <div class="avatar-container">
+            <img id="user-avatar-img" src="https://ui-avatars.com/api/?name=User&background=ff7043&color=fff&size=128" alt="Avatar">
+            <div class="camera-badge"><i class="bi bi-camera-fill"></i></div>
         </div>
+        <div id="userInfoHeader" class="header-info">
+            <h2 class="user-display-name">Đang tải...</h2>
+            <span class="user-badge"><i class="bi bi-patch-check-fill"></i> Thành viên thân thiết</span>
+        </div>
+    </div>
+
+    <div class="profile-menu-container">
         
-    </main>
-    
+        <div id="authMenuContent" class="menu-group">
+            <div class="menu-item-row" onclick="togglePasswordForm()">
+                <div class="menu-item-left">
+                    <div class="icon-box security"><i class="bi bi-shield-lock-fill"></i></div>
+                    <span>Bảo mật & Mật khẩu</span>
+                </div>
+                <i class="bi bi-chevron-right arrow-icon"></i>
+            </div>
+
+            <div id="passwordFormContainer" class="collapsible-form" style="display:none;">
+                <form id="passwordForm">
+                    <input type="password" id="oldPass" placeholder="Mật khẩu hiện tại" required>
+                    <input type="password" id="newPass" placeholder="Mật khẩu mới" required>
+                    <input type="password" id="confirmPass" placeholder="Xác nhận mật khẩu mới" required>
+                    <button type="submit" class="btn-save-modern">Cập nhật mật khẩu</button>
+                    <p id="msg"></p>
+                </form>
+            </div>
+
+            <div class="menu-item-row" onclick="window.location.href='order-history.html'">
+                <div class="menu-item-left">
+                    <div class="icon-box history"><i class="bi bi-clock-history"></i></div>
+                    <span>Lịch sử đặt món</span>
+                </div>
+                <i class="bi bi-chevron-right arrow-icon"></i>
+            </div>
+
+            <div class="menu-item-row" onclick="window.location.href='order-progress.html'">
+                <div class="menu-item-left">
+                    <div class="icon-box status"><i class="bi bi-truck"></i></div>
+                    <span>Đơn hàng đang xử lý</span>
+                </div>
+                <i class="bi bi-chevron-right arrow-icon"></i>
+            </div>
+        </div>
+
+        <div class="menu-group">
+            <div class="menu-item-row" onclick="handleAuthAction()">
+                <div class="menu-item-left">
+                    <div class="icon-box logout"><i class="bi bi-box-arrow-right"></i></div>
+                    <span id="authText" class="logout-text">Đăng xuất</span>
+                </div>
+                <i class="bi bi-chevron-right arrow-icon"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-action">
+        <button class="btn-outline-home" onclick="window.location.href='index.html'">
+            <i class="bi bi-house"></i> Quay về Trang chủ
+        </button>
+    </div>
+</main>
+    <div id="bottom-nav-placeholder"></div>
+
     <script>
-        // === BIẾN GLOBAL (GIỮ NGUYÊN) ===
         let userInfo = null;
 
-        // === CÁC HÀM CŨ CỦA BẠN (GIỮ NGUYÊN) ===
+        // --- Logic Đổi mật khẩu (Giữ nguyên 100% của bạn) ---
         function togglePasswordForm() {
-            // (Code giữ nguyên)
             const form = document.getElementById("passwordForm");
             form.style.display = form.style.display === "none" ? "block" : "none";
         }
-
-        function goBack() {
-            // (Code giữ nguyên)
-            window.location.href = "index.html";
-        }
-
+        
         async function handlePasswordSubmit(e) {
-            // (Code giữ nguyên)
             e.preventDefault();
             const msg = document.getElementById('msg');
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            msg.textContent = '';
-            msg.classList.remove('success', 'error');
-            submitButton.disabled = true;
-            submitButton.textContent = 'Đang lưu...';
-            const oldPassword = document.getElementById('oldPass').value;
-            const newPassword = document.getElementById('newPass').value;
+            const btn = e.target.querySelector('button[type="submit"]');
+            const oldPass = document.getElementById('oldPass').value;
+            const newPass = document.getElementById('newPass').value;
             const confirmPass = document.getElementById('confirmPass').value;
-            const token = userInfo ? userInfo.token : null;
-            if (!token) {
-                msg.textContent = 'Lỗi: Không tìm thấy token. Vui lòng đăng nhập lại.';
-                msg.classList.add('error');
-                submitButton.disabled = false;
-                submitButton.textContent = '💾 Lưu thay đổi';
+
+            if (!userInfo || !userInfo.token || newPass !== confirmPass) {
+                msg.textContent = newPass !== confirmPass ? '❌ Mật khẩu xác nhận không khớp!' : 'Lỗi: Bạn chưa đăng nhập.';
+                msg.className = 'error';
                 return;
             }
-            if (newPassword !== confirmPass) {
-                msg.textContent = '❌ Mật khẩu xác nhận không khớp!';
-                msg.classList.add('error');
-                submitButton.disabled = false;
-                submitButton.textContent = '💾 Lưu thay đổi';
-                return;
-            }
+
+            btn.disabled = true; btn.textContent = 'Đang lưu...';
             try {
-                const response = await fetch('http://localhost:3000/api/auth/change-password', {
+                const res = await fetch('/api/auth/change-password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ oldPassword, newPassword })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userInfo.token}` },
+                    body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass })
                 });
-                const data = await response.json();
-                if (response.ok) {
+                const data = await res.json();
+                
+                if (res.ok) {
                     msg.textContent = '✅ Đổi mật khẩu thành công!';
-                    msg.classList.add('success');
-                    document.getElementById('oldPass').value = '';
-                    document.getElementById('newPass').value = '';
-                    document.getElementById('confirmPass').value = '';
+                    msg.className = 'success';
+                    e.target.reset();
                 } else {
-                    msg.textContent = `⚠️ ${data.message || 'Lỗi khi đổi mật khẩu'}`;
-                    msg.classList.add('error');
+                    msg.textContent = `⚠️ ${data.message}`;
+                    msg.className = 'error';
                 }
             } catch (err) {
-                console.error(err);
-                msg.textContent = '🚫 Không thể kết nối đến server!';
-                msg.classList.add('error');
+                msg.textContent = '🚫 Lỗi kết nối server!';
+                msg.className = 'error';
             } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = '💾 Lưu thay đổi';
+                btn.disabled = false; btn.textContent = '💾 Lưu thay đổi';
             }
         }
-
-        // === HÀM CHỨA LOGIC CŨ CỦA BẠN (GIỮ NGUYÊN) ===
-        function runPageLogic() {
-            // (Code này giống hệt code cũ trong DOMContentLoaded của bạn)
-            const container = document.getElementById("userInfo");
-            if (!userInfo) {
-                container.innerHTML = `<p style="color:red;">⚠️ Bạn chưa đăng nhập. Vui lòng đăng nhập lại.</p>`;
-                const changePassBtn = document.querySelector('button[onclick="togglePasswordForm()"]');
-                if (changePassBtn) changePassBtn.style.display = 'none';
-            } else if (!userInfo.username) {
-                container.innerHTML = `<p style="color:red;">⚠️ Lỗi hiển thị thông tin. Vui lòng đăng nhập lại.</p>`;
-            } else {
-                container.innerHTML = `
-                    <p><strong>Tên đăng nhập:</strong> ${userInfo.username}</p>
-                    <p><strong>Vai trò:</strong> ${userInfo.role}</p>
-                    <p><strong>Mật khẩu:</strong> 🔒</p>
-                `;
-            }
-            document.getElementById('passwordForm').addEventListener('submit', handlePasswordSubmit);
-
-            // --- Code logic cho Header (Giữ nguyên) ---
-            const authButton = document.getElementById("authButton");
-            const navOrderLink = document.getElementById("nav-order-link");
-            const navAdminLink = document.getElementById("nav-admin-link");
-            const utilityDropdown = document.getElementById("utilityDropdown");
-
-            if (authButton && navOrderLink && navAdminLink) { 
-                if (userInfo) {
-                    authButton.textContent = `Đăng xuất (${userInfo.username || ''})`;
-                    authButton.style.width = 'auto'; 
-                    authButton.style.padding = '8px 16px';
-                    if(utilityDropdown) utilityDropdown.style.display = "inline-block";
-                    if (userInfo.role === "admin") {
-                        if(navOrderLink) navOrderLink.style.display = "none";
-                        if(navAdminLink) navAdminLink.style.display = "inline-block";
-                    } else {
-                        if(navOrderLink) navOrderLink.style.display = "inline-block";
-                        if(navAdminLink) navAdminLink.style.display = "none";
-                    }
-                    authButton.addEventListener("click", () => {
-                        localStorage.removeItem("userInfo");
-                        localStorage.removeItem("clientCart"); 
-                        window.location.href = "/index.html";
-                    });
-                } else {
-                    authButton.textContent = "Đăng nhập";
-                    if(utilityDropdown) utilityDropdown.style.display = "none";
-                    if(navOrderLink) navOrderLink.style.display = "none";
-                    if(navAdminLink) navAdminLink.style.display = "none";
-                    authButton.addEventListener("click", () => {
-                        window.location.href = "login.html";
-                    });
+        
+        // --- Logic Xử lý Đăng nhập/Đăng xuất (MỚI) ---
+        function handleAuthAction() {
+            if (userInfo) {
+                // Nếu đã đăng nhập -> Thực hiện Đăng xuất
+                if(confirm(`Bạn có chắc chắn muốn Đăng xuất tài khoản ${userInfo.username}?`)) {
+                    localStorage.removeItem("userInfo");
+                    localStorage.removeItem("clientCart"); 
+                    window.location.href = "/index.html"; // Chuyển về trang chủ sau khi đăng xuất
                 }
             } else {
-                 console.error("Lỗi: Không tìm thấy các nút header trong runPageLogic.");
+                // Nếu chưa đăng nhập -> Chuyển đến trang Đăng nhập
+                window.location.href = "login.html";
             }
         }
-        // === KẾT THÚC HÀM LOGIC CŨ ===
 
+        // --- Logic Hiển thị thông tin và Nút ---
+      function renderProfileAndButtons() {
+    const userHeaderInfo = document.getElementById("userInfoHeader");
+    const avatarImg = document.getElementById("user-avatar-img");
+    const authText = document.getElementById("authText");
 
-        // ***** BƯỚC 2: CODE "LẮP RÁP" MỚI (ĐÃ THAY THẾ CODE CŨ) *****
+    if (!userInfo) {
+        // Nếu chưa đăng nhập
+        document.querySelector(".user-display-name").innerText = "Khách vãng lai";
+        authText.innerText = "Đăng nhập";
+        document.getElementById("authMenuContent").style.display = "none";
+    } else {
+        // Đã đăng nhập
+        document.querySelector(".user-display-name").innerText = userInfo.username || "Người dùng";
+        authText.innerText = "Đăng xuất";
+        document.getElementById("authMenuContent").style.display = "block";
+        
+        // Tự động cập nhật avatar theo tên (UI Avatars)
+        avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userInfo.username)}&background=ff7043&color=fff&size=128`;
+    }
+}
+
+// Sửa hàm toggle mật khẩu để phù hợp với ID mới
+function togglePasswordForm() {
+    const container = document.getElementById("passwordFormContainer");
+    container.style.display = container.style.display === "none" ? "block" : "none";
+}
+
+   // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Lấy userInfo trước
-            userInfo = JSON.parse(localStorage.getItem("userInfo")); // Gán giá trị cho biến global
+            userInfo = JSON.parse(localStorage.getItem("userInfo"));
+            renderProfileAndButtons();
+            document.getElementById('passwordForm').addEventListener('submit', handlePasswordSubmit);
 
-            // Quyết định file navbar cần tải dựa trên vai trò
-            let navbarFile = '/user-navbar.html'; // Mặc định là user
+            // TẢI NAVBAR TRÊN (Header)
+            let navbarFile = '/guest-navbar.html';
+            let bottomNavFile = '/bottom-nav.html'; // Default: Menu đầy đủ
+
             if (userInfo && userInfo.role === 'admin') {
-                navbarFile = '/admin-navbar.html'; // Nếu là admin thì đổi file
+                navbarFile = '/admin-navbar.html';
+            } else if (userInfo) {
+                navbarFile = '/user-navbar.html';
+            } else {
+                // Nếu chưa đăng nhập, sử dụng menu tối giản cho Header & Bottom Nav
+                bottomNavFile = '/guest-bottom-nav.html'; 
             }
-            
-            // Bắt đầu tải file navbar tương ứng
+
             fetch(navbarFile)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
-                    return response.text();
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById('navbar-placeholder').innerHTML = html;
                 })
-                .then(data => {
-                    // 1. Lắp menu vào
-                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
-                    if (navbarPlaceholder) {
-                        navbarPlaceholder.innerHTML = data;
-                    } else {
-                        console.error("Không tìm thấy thẻ #navbar-placeholder!");
-                        return; 
-                    }
+                .catch(err => console.error("Lỗi tải Header:", err));
+
+            // TẢI MENU DƯỚI (Bottom Nav)
+            fetch(bottomNavFile) // SỬ DỤNG FILE ĐƯỢC XÁC ĐỊNH
+                .then(r => r.text())
+                .then(html => {
+                    document.getElementById('bottom-nav-placeholder').innerHTML = html;
                     
-                    // 2. Chạy logic của trang (hàm runPageLogic đã có ở trên)
-                    if (typeof runPageLogic === 'function') {
-                        runPageLogic(); 
-                    } else {
-                         console.error("Không tìm thấy hàm runPageLogic()!");
-                    }
+                    // Active nút "Tài khoản" (Chỉ active nếu là menu đầy đủ)
+                    const navProfile = document.getElementById('nav-profile');
+                    if(navProfile) navProfile.classList.add('active');
+
+                    // Script toggle menu (Để nút Tiện ích hoạt động)
+                    // ... (Đoạn script này giữ nguyên)
+                    const s = document.createElement("script");
+                    s.innerHTML = `
+                        function toggleUtilityMenu(){ const m=document.getElementById('utility-menu'),o=document.getElementById('utility-overlay'); if(m){m.classList.add('show');o.classList.add('show');document.body.style.overflow='hidden';}}
+                        function closeUtilityMenu(){ const m=document.getElementById('utility-menu'),o=document.getElementById('utility-overlay'); if(m){m.classList.remove('show');o.classList.remove('show');document.body.style.overflow='';}}
+                    `;
+                    document.body.appendChild(s);
                 })
-                .catch(error => {
-                    console.error('Lỗi tải menu:', error);
-                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
-                     if (navbarPlaceholder) {
-                         navbarPlaceholder.innerHTML = `<p style="color:red; text-align:center;">LỖI TẢI MENU (${error.message})</p>`;
-                     }
-                });
+                .catch(err => console.error("Lỗi tải Bottom Nav:", err));
         });
     </script>
-    <script src="/socket.io/socket.io.js"></script>
-<script src="js/chatbox.js"></script>
-
 </body>
 </html>

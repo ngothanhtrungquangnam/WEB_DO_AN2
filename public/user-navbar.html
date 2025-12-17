@@ -13,21 +13,34 @@
     </div>
 </div>
     </nav>
-    <div class="header-actions">
-        <button class="btn" id="authButton" style="width: auto; padding: 8px 16px;">Đăng nhập</button>
-   
-    </div>
-    <div class="chat-icon" id="chatIcon" style="display: none;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-</div>
+<header>
+    <div class="logo">🍜 Quán Ăn Ngon 24h</div> 
+    
+    <nav class="nav-links">
+        <a href="index.html">Trang chủ</a>
+        <a href="order.html" id="nav-order-link" style="display: none;">Đặt món</a>
+        <a href="admin.html" id="nav-admin-link" style="display: none;">Quản lý đơn</a>
 
-<div class="chat-window" id="chatWindow">
-    <div class="chat-header">Chat Hỗ Trợ</div>
-    <div class="chat-messages" id="chatMessages">
+        <div class="dropdown" id="utilityDropdown" style="display: inline-block;">
+            <a class="nav-link" href="#">Tiện ích <img src="images/down-arrow.png" alt="" class="arrow-icon"></a>
+            <div class="dropdown-content">
+                <a href="/profile.html">👤 Thông tin người dùng</a>
+                <a href="/order-progress.html">🔄 Tiến trình đơn hàng</a>
+                <a href="/order-history.html">🧾 Lịch sử đặt món</a>
+            </div>
         </div>
-    <div class="chat-input">
-        <input type="text" id="chatMessageInput" placeholder="Nhập tin nhắn...">
-        <button id="chatSendButton">Gửi</button>
+    </nav>
+    
+    <div class="chat-icon" id="chatIcon" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
     </div>
-</div>
+
+    <div class="chat-window" id="chatWindow">
+        <div class="chat-header">Chat Hỗ Trợ</div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input">
+            <input type="text" id="chatMessageInput" placeholder="Nhập tin nhắn...">
+            <button id="chatSendButton">Gửi</button>
+        </div>
+    </div>
 </header>

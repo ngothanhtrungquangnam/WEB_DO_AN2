@@ -99,7 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- SỬA LẠI HÀM fetchMenu ---
 async function fetchMenu() {
     try {
-        const response = await fetch('/api/mon-an'); 
+      // Dùng link Server thật để lấy dữ liệu dù đang chạy ở Live Server
+const response = await fetch('https://web-do-an2.onrender.com/api/mon-an');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const allData = await response.json(); 
@@ -210,46 +211,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
    
 
-    // =============================================
-    // CHỨC NĂNG CHUNG: NAVBAR AUTHENTICATION
-    // =============================================
-    function setupNavbar() {
-        if (!authButton) return; 
-
-        if (userInfo) {
-            authButton.innerHTML = `<i class="bi bi-box-arrow-right"></i> Đăng xuất (${userInfo.username})`;
-      authButton.onclick = () => {
-    // 👇 --- CODE THÊM MỚI --- 👇
-    try {
-        const rawData = localStorage.getItem('userInfo');
-        if (rawData) {
-            const data = JSON.parse(rawData);
-            const userId = data.userId || data._id || data.id; 
-            if (userId) localStorage.removeItem(`chatHistory_${userId}`);
-        }
-    } catch (e) { console.error(e); }
-    // 👆 --- KẾT THÚC --- 👆
-
-    localStorage.removeItem('userInfo'); 
-    alert('Bạn đã đăng xuất.');
-    window.location.href = '/login.html'; 
-};
-            if (userInfo.role === 'admin' && adminLinks) {
-                adminLinks.style.display = 'inline'; 
-            } else if (adminLinks) {
-                adminLinks.style.display = 'none'; 
-            }
-        } else {
-            authButton.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Đăng nhập';
-            authButton.onclick = () => {
-                window.location.href = '/login.html'; 
-            };
-            if (adminLinks) {
-                adminLinks.style.display = 'none'; 
-            }
-        }
-    }
-    setupNavbar(); 
 
     // =============================================
     // TRANG CHỦ / MENU (index.html)
@@ -258,7 +219,8 @@ document.addEventListener("DOMContentLoaded", () => {
         
 async function fetchMenu() {
     try {
-        const response = await fetch('/api/mon-an'); 
+       // Dùng link Server thật để lấy dữ liệu dù đang chạy ở Live Server
+const response = await fetch('https://web-do-an2.onrender.com/api/mon-an');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const allData = await response.json(); 
@@ -483,7 +445,8 @@ function filterAndSearchMenu() {
         
         async function fetchAdminMenu() {
             try {
-                 const response = await fetch('/api/mon-an'); 
+                 // Dùng link Server thật để lấy dữ liệu dù đang chạy ở Live Server
+const response = await fetch('https://web-do-an2.onrender.com/api/mon-an');
                  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                  const menu = await response.json();
                  renderAdminMenu(menu);
@@ -667,7 +630,7 @@ window.submitPasswordSetup = async function() {
             if (setupModal) setupModal.style.display = 'none';
 
             // Chuyển về trang chủ hoặc tải lại navbar
-            window.location.href = '/index.html'; 
+            window.location.href = '/public/index.html';
             
         } else {
             alert("Lỗi Server khi thiết lập mật khẩu: " + (data.message || "Thất bại."));
@@ -779,7 +742,7 @@ function addToClientCart(id) {
     localStorage.setItem("clientCart", JSON.stringify(cart));
     
     // Hiện thông báo
-    showToast(`✅ Đã thêm "${item.name}" vào giỏ hàng!`);
+    showToast(`✅ Đã thêm "${item.name}" `);
 
     // 🔥 THÊM DÒNG NÀY ĐỂ CẬP NHẬT SỐ TRÊN THANH MENU MOBILE NGAY LẬP TỨC 🔥
     if (typeof updateMobileCartCount === 'function') {
@@ -916,7 +879,7 @@ if (formSignup) {
         console.log("🚀 Đang gửi yêu cầu ĐĂNG KÝ lên Server..."); // LOG 1
 
         try {
-            const res = await fetch('/api/auth/register', {
+          const res = await fetch('https://web-do-an2.onrender.com/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, role: 'user' })
@@ -958,7 +921,7 @@ if (formLogin) {
         console.log("🚀 Đang gửi yêu cầu ĐĂNG NHẬP lên Server...", username); // LOG 1
 
         try {
-            const res = await fetch('/api/auth/login', {
+            const res = await fetch('https://web-do-an2.onrender.com/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: username, password: password })
@@ -1101,7 +1064,7 @@ if (e.target.id === 'btn-verify-otp') {
         console.log(`✅ Phone OK. Đang gửi về Server với chế độ: ${actionType}`);
 
         // 🔥 BƯỚC 2: GỌI API VỚI actionType
-        const res = await fetch('/api/auth/social-register', { // Luôn dùng endpoint này
+    const res = await fetch('https://web-do-an2.onrender.com/api/auth/social-register', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ 
@@ -1187,7 +1150,7 @@ if (e.target.closest('.social.google')) {
         console.log(`✅ Google OK. Đang gửi về Server với chế độ: ${actionType}`);
 
         // --- GỌI API SERVER ---
-        const res = await fetch('/api/auth/social-register', {
+    const res = await fetch('https://web-do-an2.onrender.com/api/auth/social-register', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
@@ -1219,7 +1182,7 @@ if (e.target.closest('.social.google')) {
                  }
             } else {
                  alert(`🎉 Chào mừng ${data.username}!`);
-                 window.location.href = '/index.html'; 
+                window.location.href = '/public/index.html';
             }
         } else {
             alert("⚠️ Thông báo: " + (data.message || "Thất bại"));
@@ -1303,7 +1266,7 @@ window.handleSendOtp = async function() {
     }
 
     try {
-        const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetch('https://web-do-an2.onrender.com/api/auth/forgot-password', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ email })
@@ -1339,7 +1302,7 @@ window.handleSubmitReset = async function() {
     if (!otp || !newPassword) return alert("Vui lòng nhập đủ Mã OTP và Mật khẩu mới!");
 
     try {
-        const res = await fetch('/api/auth/reset-password', {
+       const res = await fetch('https://web-do-an2.onrender.com/api/auth/reset-password', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ email, otp, newPassword })
@@ -1396,6 +1359,22 @@ setInterval(() => {
         timerDisplay.innerHTML = `<span>${h < 10 ? '0'+h : h}</span>:<span>${m < 10 ? '0'+m : m}</span>:<span>${s < 10 ? '0'+s : s}</span>`;
     }
 }, 1000);
+
+// ==========================================================
+// 🔥 HÀM MỚI: HIỆN MODAL ĐĂNG NHẬP/ĐĂNG KÝ (Dùng cho Header) 🔥
+// ==========================================================
+window.showAuthModal = function() {
+    const authModal = document.getElementById('auth-modal');
+    const container = document.getElementById('auth-container');
+    
+    if (authModal) {
+        authModal.style.display = 'flex';
+        // Luôn chuyển sang form Đăng ký khi mở modal lần đầu
+        if (container) container.classList.add("right-panel-active"); 
+    } else {
+        alert("Lỗi: Không tìm thấy Modal đăng nhập. Vui lòng kiểm tra HTML.");
+    }
+}
 // ==========================================================
 // 🔥 HÀM RENDER FLASH SALE (BẠN ĐANG THIẾU CÁI NÀY) 🔥
 // ==========================================================
@@ -1448,3 +1427,159 @@ function updateMobileCartCount() {
 
 // Gọi hàm này ngay khi tải trang để hiện số cũ (nếu có)
 document.addEventListener('DOMContentLoaded', updateMobileCartCount);
+// === LOGIC ĐÓNG POPUP THIẾT LẬP MẬT KHẨU ===
+document.addEventListener('DOMContentLoaded', () => {
+    const setupModal = document.getElementById('password-setup-modal');
+    const closeBtn = document.getElementById('close-setup-btn');
+    const skipBtn = document.getElementById('skip-setup-btn');
+
+    // Hàm đóng popup
+    function closeSetupModal(e) {
+        if(e) e.preventDefault(); // Ngăn chặn hành vi mặc định nếu là link
+        if (setupModal) {
+            setupModal.style.display = 'none';
+        }
+    }
+
+    // Gán sự kiện click cho nút X
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeSetupModal);
+        // Thêm sự kiện touchstart cho mobile để nhạy hơn
+        closeBtn.addEventListener('touchstart', closeSetupModal);
+    }
+
+    // Gán sự kiện click cho nút Bỏ qua
+    if (skipBtn) {
+        skipBtn.addEventListener('click', closeSetupModal);
+        skipBtn.addEventListener('touchstart', closeSetupModal);
+    }
+});
+// ==========================================================
+// 🔥 FIX LỖI CHUYỂN ĐỔI FORM TRÊN MOBILE (BẮT BUỘC CÓ) 🔥
+// ==========================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Lấy container chính
+    const authContainer = document.getElementById('auth-container');
+
+    // 2. Lấy 2 nút chuyển đổi trên Mobile (Dựa theo ID trong HTML của bạn)
+    const btnToLogin = document.getElementById('signInMobile'); // Nút "Đăng nhập ngay"
+    const btnToSignup = document.getElementById('signUpMobile'); // Nút "Đăng ký ngay"
+
+    // 3. Xử lý sự kiện: Chuyển sang ĐĂNG NHẬP
+    if (btnToLogin && authContainer) {
+        btnToLogin.addEventListener('click', (e) => {
+            e.preventDefault(); // Chặn load lại trang
+            console.log("Đã bấm chuyển sang Đăng nhập");
+            // Xóa class active -> CSS sẽ hiện form Sign In
+            authContainer.classList.remove("right-panel-active");
+        });
+    }
+
+    // 4. Xử lý sự kiện: Chuyển sang ĐĂNG KÝ
+    if (btnToSignup && authContainer) {
+        btnToSignup.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log("Đã bấm chuyển sang Đăng ký");
+            // Thêm class active -> CSS sẽ hiện form Sign Up
+            authContainer.classList.add("right-panel-active");
+        });
+    }
+});
+// ==========================================================
+// 🔥 HÀM MỚI: HIỆN MODAL ĐĂNG NHẬP/ĐĂNG KÝ (Dùng cho Header) 🔥
+// ==========================================================
+window.showAuthModal = function() {
+    const authModal = document.getElementById('auth-modal');
+    const container = document.getElementById('auth-container');
+    
+    if (authModal) {
+        authModal.style.display = 'flex';
+        // Luôn chuyển sang form Đăng ký khi mở modal lần đầu (Tùy chọn, bạn có thể xóa dòng này)
+        if (container) container.classList.add("right-panel-active"); 
+    } else {
+        // Fallback nếu modal không tồn tại (chuyển sang trang login)
+        window.location.href = '/login.html'; 
+    }
+}
+// ==========================================================
+// 🔥 LOGIC MENU TIỆN ÍCH & BOTTOM NAV TOÀN CỤC 🔥
+// ==========================================================
+
+async function loadGlobalBottomNav() {
+    const placeholder = document.getElementById('bottom-nav-placeholder');
+    if (!placeholder) return; 
+
+    const userInfo = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
+    let bottomNavFile = userInfo ? 'bottom-nav.html' : 'guest-bottom-nav.html'; 
+
+    try {
+        const response = await fetch(bottomNavFile);
+        if (response.ok) {
+            const html = await response.text();
+            placeholder.innerHTML = html;
+// --- TRONG FILE script.js ---
+setTimeout(() => {
+    const path = window.location.pathname;
+    
+    // 1. Reset tất cả các nút về màu xám
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+    // 2. Kiểm tra trang chủ, giỏ hàng, tài khoản... (giữ nguyên)
+    if (path.includes('index.html') || path === '/' || path === '') {
+        document.getElementById('nav-home')?.classList.add('active');
+    } 
+    else if (path.includes('order.html')) {
+        document.getElementById('nav-cart')?.classList.add('active');
+    } 
+    else if (path.includes('profile.html')) {
+        document.getElementById('nav-profile')?.classList.add('active');
+    }
+    // 3. 🔥 SỬA DÒNG NÀY ĐỂ NHẬN DIỆN CẢ TIẾN TRÌNH VÀ LỊCH SỬ
+    else if (path.includes('progress') || path.includes('history')) {
+        const utilityBtn = document.getElementById('nav-utility');
+        if (utilityBtn) {
+            utilityBtn.classList.add('active');
+            console.log("✅ Đã thắp sáng nút Tiện ích");
+        }
+    }
+}, 100);
+            if (userInfo && typeof updateMobileCartCount === 'function') {
+                updateMobileCartCount();
+            }
+        }
+    } catch (e) {
+        console.error("Lỗi tải Bottom Nav:", e);
+    }
+}
+
+// Gọi hàm tải ngay khi web chạy
+document.addEventListener('DOMContentLoaded', loadGlobalBottomNav);
+
+
+// 2. Hàm bật/tắt Menu trượt (Dùng class 'show' để kích hoạt CSS)
+window.toggleUtilityMenu = function() {
+    const menu = document.getElementById('utility-menu');
+    const overlay = document.getElementById('utility-overlay');
+    
+    if (menu && overlay) {
+        // Thêm class 'show' để nó trượt lên
+        menu.classList.add('show');
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Khóa cuộn trang
+    } else {
+        console.warn("Chưa tải xong menu tiện ích!");
+    }
+}
+
+// 3. Hàm đóng Menu
+window.closeUtilityMenu = function() {
+    const menu = document.getElementById('utility-menu');
+    const overlay = document.getElementById('utility-overlay');
+    
+    if (menu && overlay) {
+        // Gỡ class 'show' để nó trượt xuống
+        menu.classList.remove('show');
+        overlay.classList.remove('show');
+        document.body.style.overflow = ''; // Mở lại cuộn trang
+    }
+}

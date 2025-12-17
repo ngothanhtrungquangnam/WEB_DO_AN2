@@ -46,17 +46,7 @@
       
       console.log("✅ Firebase đã khởi tạo thành công!");
     </script>
-</head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quán Ăn Ngon 24h</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <script src="/socket.io/socket.io.js"></script>
-
-    </head>
-    <script src="/socket.io/socket.io.js"></script>
-</head>
+<div id="bottom-nav-placeholder"></div>
 
 <body>
     <div id="toastMessage" class="toast"></div>
@@ -152,30 +142,23 @@
         <p>Đăng nhập để xem thông tin cá nhân của bạn.</p>
     </section>
 
-    <footer class="modern-footer">
+<footer class="modern-footer">
     <div class="footer-content">
-        <div class="footer-col">
+        <div class="footer-col brand-info">
             <h3>Quán Ăn Ngon 24h</h3>
-            <p>Hương vị chuẩn cơm mẹ nấu. Giao hàng tận nơi trong 30 phút.</p>
+            <p>Hương vị chuẩn cơm mẹ nấu. Giao hàng 30 phút.</p>
             <div class="social-links">
                 <a href="#"><i class="bi bi-facebook"></i></a>
                 <a href="#"><i class="bi bi-youtube"></i></a>
             </div>
         </div>
-        <div class="footer-col">
-            <h3>Liên kết</h3>
-            <ul>
-                <li><a href="#">Về chúng tôi</a></li>
-                <li><a href="#">Thực đơn</a></li>
-                <li><a href="#">Khuyến mãi</a></li>
-            </ul>
-        </div>
-        <div class="footer-col">
-            <h3>Hỗ trợ</h3>
-            <ul>
-                <li><a href="#">Trung tâm trợ giúp</a></li>
-                <li><a href="#">Chính sách bảo mật</a></li>
-            </ul>
+
+        <div class="footer-links-group">
+            <a href="#">Về chúng tôi</a>
+            <a href="#">Thực đơn</a>
+            <a href="#">Khuyến mãi</a>
+            <a href="#">Trợ giúp</a>
+            <a href="#">Bảo mật</a>
         </div>
     </div>
     <div class="footer-bottom">
@@ -202,6 +185,9 @@
                         <a href="#" class="social google" title="Google"><i class="bi bi-google"></i></a>
                         <a href="#" class="social phone" title="Số điện thoại"><i class="bi bi-telephone-fill"></i></a>
                     </div>
+                    <p class="mobile-switch-text">
+    Đã có tài khoản? <a href="#" id="signInMobile">Đăng nhập ngay</a>
+</p>
                 </form>
             </div>
 
@@ -224,6 +210,9 @@
                         <a href="#" class="social google" title="Google"><i class="bi bi-google"></i></a>
                         <a href="#" class="social phone" title="Số điện thoại"><i class="bi bi-telephone-fill"></i></a>
                     </div>
+                    <p class="mobile-switch-text">
+    Chưa có tài khoản? <a href="#" id="signUpMobile">Đăng ký ngay</a>
+</p>
                 </form>
             </div>
 
@@ -276,23 +265,37 @@
         </div>
         </div>
     </div>
-<div id="password-setup-modal" class="auth-overlay" style="display: none; justify-content: center; align-items: center;">
-    <div class="auth-container" style="max-width: 400px; padding: 30px; text-align: center; background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+<div id="password-setup-modal" class="auth-overlay" style="display: none; justify-content: center; align-items: center; z-index: 99999;">
+    <div class="auth-container" style="position: relative; max-width: 400px; width: 90%; padding: 30px; text-align: center; background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); pointer-events: auto;">
+        
+        <span id="close-setup-btn" 
+              onclick="document.getElementById('password-setup-modal').style.display='none'"
+              style="position: absolute; top: 5px; right: 5px; font-size: 35px; cursor: pointer; color: #333; padding: 10px; line-height: 1; z-index: 100;">&times;</span>
+
         <h2 style="color: #ff7043; margin-bottom: 20px;">🔒 Thiết Lập Mật Khẩu</h2>
-        <p style="margin-bottom: 25px;">Vui lòng tạo mật khẩu cho tài khoản <strong id="setup-email-display"></strong> để bạn có thể đăng nhập bằng email/mật khẩu sau này.</p>
+        <p style="margin-bottom: 25px; font-size: 14px; color: #555;">
+            Vui lòng tạo mật khẩu cho tài khoản <strong id="setup-email-display">...</strong> để bạn có thể đăng nhập bằng email/mật khẩu sau này.
+        </p>
         
         <form id="form-setup-password">
-            <input type="password" 
-       id="setup-password-input" 
-       placeholder="Mật khẩu mới (ít nhất 6 ký tự)">
-       
-<input type="password" 
-       id="setup-confirm-input" 
-       placeholder="Nhập lại mật khẩu mới">
+            <input type="password" id="setup-password-input" placeholder="Mật khẩu mới (ít nhất 6 ký tự)" 
+                   style="width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+            
+            <input type="password" id="setup-confirm-input" placeholder="Nhập lại mật khẩu mới"
+                   style="width: 100%; padding: 12px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;">
 
-<button type="button" onclick="submitPasswordSetup()"> 
-    Hoàn tất & Đăng nhập
-</button>
+            <button type="button" onclick="submitPasswordSetup()" 
+                    style="width: 100%; padding: 12px; background: #ff7043; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;"> 
+                Hoàn tất & Đăng nhập
+            </button>
+            
+            <p style="margin-top: 20px; font-size: 14px;">
+                <a href="javascript:void(0)" id="skip-setup-btn" 
+                   onclick="document.getElementById('password-setup-modal').style.display='none'"
+                   style="color: #666; text-decoration: underline; padding: 10px; display: inline-block;">
+                   Bỏ qua bước này
+                </a>
+            </p>
         </form>
     </div>
 </div>
@@ -309,145 +312,122 @@
             <button type="button" class="btn" onclick="handleSendOtp()">Gửi Mã OTP</button>
         </div>
 
-        <div id="forgot-step-2" style="display: none;">
+<div id="forgot-step-2" style="display: none;">
+
             <h2 style="color: #27ae60;">✅ Đã gửi mã!</h2>
+
             <p>Kiểm tra email và nhập thông tin:</p>
-            
+
+           
+
             <input type="text" id="reset-otp" placeholder="Mã OTP (6 số)" style="width: 100%; padding: 10px; margin-bottom: 5px;">
+
             <input type="password" id="reset-new-pass" placeholder="Mật khẩu mới" style="width: 100%; padding: 10px;">
-            
+
+           
+
             <button type="button" class="btn" style="margin-top: 15px;" onclick="handleSubmitReset()">Đổi Mật Khẩu</button>
-            
+
+           
+
             <p style="margin-top: 10px; cursor: pointer; color: blue;" onclick="backToStep1()">Nhập sai email? Quay lại</p>
+
         </div>
+
     </div>
+
 </div>
 
-<div class="mobile-bottom-nav">
-    <a href="#" class="nav-item active">
-        <i class="bi bi-house-door-fill"></i>
-        <span>Trang chủ</span>
-    </a>
-    
-    <a href="#menuContainer" class="nav-item">
-        <i class="bi bi-grid-fill"></i>
-        <span>Thực đơn</span>
-    </a>
 
-    <a href="order.html" class="nav-item cart-icon-mobile">
-        <div class="icon-wrapper">
-            <i class="bi bi-basket2-fill"></i>
-            <span id="mobile-cart-count" class="badge">0</span>
-        </div>
-        <span>Giỏ hàng</span>
-    </a>
 
-    <a href="#" class="nav-item" onclick="document.getElementById('auth-modal').style.display='flex'">
-        <i class="bi bi-person-fill"></i>
-        <span>Tài khoản</span>
-    </a>
-</div>
-        <script>
-        // === BIẾN GLOBAL ===
-        let userInfo = null; 
 
-        // === CÁC HÀM CŨ CỦA BẠN (GIỮ NGUYÊN) ===
-        function showSection(id) {
-            document.querySelectorAll('#history, #payment, #profile').forEach(sec => sec.style.display = 'none');
-            const activeSection = document.getElementById(id);
-            if (activeSection) {
-                activeSection.style.display = 'block';
-            }
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+   <script>
+    // === BIẾN GLOBAL ===
+    let userInfo = null; 
 
-// --- HÀM LOGIC MỚI CHO INDEX (Đã xóa bỏ code chuyển trang cũ) ---
-       function runIndexPageLogic() {
-    // 1. Xử lý Dropdown Tiện ích (Giữ nguyên của bạn)
-    const utilityDropdown = document.getElementById("utilityDropdown");
-    if (utilityDropdown) {
-        utilityDropdown.style.display = userInfo ? "inline-block" : "none";
-    }
+    // === HÀM XỬ LÝ LOGIC HIỂN THỊ MENU ===
+    function runIndexPageLogic() {
+        // 1. Lấy thông tin user
+        userInfo = JSON.parse(localStorage.getItem("userInfo"));
 
-    // 2. Xử lý hiển thị nút trên Navbar
-    const authButton = document.getElementById("authButton");
-    const navOrderLink = document.getElementById("nav-order-link");
-    const navAdminLink = document.getElementById("nav-admin-link");
+        // --- A. XỬ LÝ CÁC NÚT TRÊN MENU ---
+        const utilityDropdown = document.getElementById("utilityDropdown"); // Nút Tiện ích
+        const navOrderLink = document.getElementById("nav-order-link");   // Nút Đặt món
+        const navAdminLink = document.getElementById("nav-admin-link");   // Nút Quản lý (Admin)
 
-    // --- SỬA LẠI: Tách rời các IF để không bị lỗi khi thiếu nút ---
-
-    // A. Xử lý nút Đăng nhập (Chỉ thay đổi chữ, không gán click vì script.js lo)
-    if (authButton) {
-        if (userInfo) {
-            // === ĐÃ ĐĂNG NHẬP ===
-            authButton.textContent = `Đăng xuất (${userInfo.username})`;
+        if (!userInfo) {
+            // === TRƯỜNG HỢP 1: CHƯA ĐĂNG NHẬP (KHÁCH) ===
+            // Chỉ hiện Trang chủ (mặc định HTML đã hiện), ẨN hết cái khác
+            if (utilityDropdown) utilityDropdown.style.display = "none";
+            if (navOrderLink) navOrderLink.style.display = "none";
+            if (navAdminLink) navAdminLink.style.display = "none";
         } else {
-            // === CHƯA ĐĂNG NHẬP ===
-            authButton.textContent = "Đăng nhập";
+            // === TRƯỜNG HỢP 2: ĐÃ ĐĂNG NHẬP ===
+            
+            // 1. Hiện "Tiện ích" cho mọi người đã đăng nhập
+            if (utilityDropdown) utilityDropdown.style.display = "inline-block";
+
+            // 2. Hiện "Đặt món" (Chỉ hiện cho User thường, Admin thì ẩn nếu muốn)
+            if (navOrderLink) {
+                if (userInfo.role === 'admin') {
+                    navOrderLink.style.display = "none"; // Admin không cần đặt món
+                } else {
+                    navOrderLink.style.display = "inline-block"; // User thường thì hiện
+                }
+            }
+
+            // 3. Hiện "Quản lý" (Chỉ cho Admin)
+            if (navAdminLink) {
+                if (userInfo.role === 'admin') {
+                    navAdminLink.style.display = "inline-block";
+                } else {
+                    navAdminLink.style.display = "none";
+                }
+            }
+        }
+
+        // --- B. XỬ LÝ NÚT ĐĂNG NHẬP/TÊN USER ---
+        const authButton = document.getElementById("authButton");
+        if (authButton) {
+            if (userInfo) {
+                // Đã đăng nhập -> Hiện tên & link tới Profile
+                authButton.textContent = `Chào, ${userInfo.username}`;
+                authButton.href = "/profile"; 
+            } else {
+                // Chưa đăng nhập -> Hiện chữ Đăng nhập
+                authButton.textContent = "Đăng nhập";
+                authButton.href = "#"; 
+            }
         }
     }
 
-    // B. Xử lý Link "Đặt món" (Chỉ hiện cho User thường)
-    if (navOrderLink) {
-        // Logic: Phải có user VÀ không phải admin mới hiện
-        if (userInfo && userInfo.role !== 'admin') {
-            navOrderLink.style.display = "inline-block";
-        } else {
-            navOrderLink.style.display = "none";
-        }
-    }
+    // === KHỞI TẠO TRANG ===
+    document.addEventListener("DOMContentLoaded", () => {
+        userInfo = JSON.parse(localStorage.getItem("userInfo")); 
 
-    // C. Xử lý Link "Quản lý" (Chỉ hiện cho Admin)
-    if (navAdminLink) {
-        if (userInfo && userInfo.role === "admin") {
-            navAdminLink.style.display = "inline-block";
-        } else {
-            navAdminLink.style.display = "none";
-        }
-    }
-}
-        // === CODE "LẮP RÁP" MỚI (GIỮ NGUYÊN) ===
-        document.addEventListener("DOMContentLoaded", () => {
-            userInfo = JSON.parse(localStorage.getItem("userInfo")); // Gán giá trị cho biến global
+        // Chọn file Navbar: Admin dùng admin-navbar, còn lại dùng user-navbar (hoặc guest)
+        // Lưu ý: Dù là guest vẫn load user-navbar để có đủ các nút, sau đó JS sẽ ẩn đi
+        let navbarFile = userInfo && userInfo.role === 'admin' ? 'admin-navbar.html' : 'user-navbar.html';
+        
+        // Nếu bạn chưa có file user-navbar.html, có thể dùng guest-navbar.html 
+        // NHƯNG phải đảm bảo trong file đó có đủ thẻ <a> cho "Đặt món" và "Tiện ích" để JS thao tác.
 
-            // Quyết định file navbar cần tải dựa trên vai trò
-            let navbarFile = '/user-navbar.html'; // Mặc định là user
-            if (userInfo && userInfo.role === 'admin') {
-                navbarFile = '/admin-navbar.html'; // Nếu là admin thì đổi file
-            }
-            
-            // Bắt đầu tải file navbar tương ứng
-            fetch(navbarFile)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
-                    return response.text();
-                })
-                .then(data => {
-                    // 1. Lắp menu vào
-                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
-                    if (navbarPlaceholder) {
-                        navbarPlaceholder.innerHTML = data;
-                    } else {
-                        console.error("Không tìm thấy thẻ #navbar-placeholder!");
-                        return; 
-                    }
-                    
-                    // 2. Chạy logic của trang (hàm runIndexPageLogic đã có ở trên)
-                    if (typeof runIndexPageLogic === 'function') {
-                        runIndexPageLogic(); 
-                    } else {
-                         console.error("Không tìm thấy hàm runIndexPageLogic()!");
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi tải menu:', error);
-                    const navbarPlaceholder = document.getElementById('navbar-placeholder');
-                     if (navbarPlaceholder) {
-                         navbarPlaceholder.innerHTML = `<p style="color:red; text-align:center;">LỖI TẢI MENU (${error.message})</p>`;
-                     }
-                });
-        });
-    </script>
+        fetch(navbarFile)
+            .then(response => {
+                if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+                return response.text();
+            })
+            .then(data => {
+                const navbarPlaceholder = document.getElementById('navbar-placeholder');
+                if (navbarPlaceholder) {
+                    navbarPlaceholder.innerHTML = data;
+                    // Chạy logic ẩn/hiện sau khi HTML đã được nạp
+                    runIndexPageLogic(); 
+                }
+            })
+            .catch(error => console.error('Lỗi tải menu:', error));
+    });
+</script>
 
         <script src="script.js" defer></script> 
    
@@ -455,5 +435,6 @@
    
 
 <script src="/js/aiChat.js"></script>
+
 </body>
 </html>
