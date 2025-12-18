@@ -401,32 +401,34 @@
         }
     }
 
-    // === KHỞI TẠO TRANG ===
-    document.addEventListener("DOMContentLoaded", () => {
-        userInfo = JSON.parse(localStorage.getItem("userInfo")); 
+   // === KHỞI TẠO TRANG ===
+document.addEventListener("DOMContentLoaded", () => {
+    userInfo = JSON.parse(localStorage.getItem("userInfo")); 
 
-        // Chọn file Navbar: Admin dùng admin-navbar, còn lại dùng user-navbar (hoặc guest)
-        // Lưu ý: Dù là guest vẫn load user-navbar để có đủ các nút, sau đó JS sẽ ẩn đi
-        let navbarFile = userInfo && userInfo.role === 'admin' ? 'admin-navbar.html' : 'user-navbar.html';
-        
-        // Nếu bạn chưa có file user-navbar.html, có thể dùng guest-navbar.html 
-        // NHƯNG phải đảm bảo trong file đó có đủ thẻ <a> cho "Đặt món" và "Tiện ích" để JS thao tác.
+    // SỬA LẠI ĐOẠN NÀY ĐỂ NẠP ĐÚNG FILE GUEST
+    let navbarFile;
+    if (!userInfo) {
+        navbarFile = 'guest-navbar.html'; // Nếu chưa đăng nhập -> Nạp guest
+    } else if (userInfo.role === 'admin') {
+        navbarFile = 'admin-navbar.html'; // Nếu là admin
+    } else {
+        navbarFile = 'user-navbar.html';  // Nếu là user thường
+    }
 
-        fetch(navbarFile)
-            .then(response => {
-                if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
-                return response.text();
-            })
-            .then(data => {
-                const navbarPlaceholder = document.getElementById('navbar-placeholder');
-                if (navbarPlaceholder) {
-                    navbarPlaceholder.innerHTML = data;
-                    // Chạy logic ẩn/hiện sau khi HTML đã được nạp
-                    runIndexPageLogic(); 
-                }
-            })
-            .catch(error => console.error('Lỗi tải menu:', error));
-    });
+    fetch(navbarFile)
+        .then(response => {
+            if (!response.ok) throw new Error(`Không tìm thấy file ${navbarFile}`);
+            return response.text();
+        })
+        .then(data => {
+            const navbarPlaceholder = document.getElementById('navbar-placeholder');
+            if (navbarPlaceholder) {
+                navbarPlaceholder.innerHTML = data;
+                runIndexPageLogic(); 
+            }
+        })
+        .catch(error => console.error('Lỗi tải menu:', error));
+});
 </script>
 
         <script src="script.js" defer></script> 

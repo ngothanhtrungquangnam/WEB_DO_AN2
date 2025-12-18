@@ -2053,12 +2053,12 @@ footer.modern-footer {
 }
 
 
-
 /* ======================================================
-   🔥 CODE MOBILE FINAL V5 - KHẮC PHỤC TOÀN DIỆN 🔥
+   🔥 CODE MOBILE FINAL V6 - ĐÃ SỬA LỖI CÚ PHÁP
+   (Chỉ áp dụng cho màn hình nhỏ hơn 768px)
    ====================================================== */
 
-/* 1. Ẩn các thành phần Mobile trên PC */
+/* 1. Ẩn các thành phần Mobile trên PC (Để không bị hiện lộn xộn trên máy tính) */
 .mobile-bottom-nav,
 .mobile-switch-text {
     display: none; 
@@ -2071,7 +2071,7 @@ footer.modern-footer {
     color: #666;
     text-align: center;
     width: 100%;
-    display: block; /* Đảm bảo nó là khối block để xuống dòng */
+    display: block;
 }
 .mobile-switch-text a {
     color: #ff7043;
@@ -2080,11 +2080,58 @@ footer.modern-footer {
     cursor: pointer;
 }
 
-@media (max-width: 768px) {
+/* ============================================================
+   BẮT ĐẦU KHỐI MOBILE (Mọi code mobile phải nằm trong này)
+   ============================================================ */
+@media screen and (max-width: 768px) {
 
-    /* === A. HEADER & NAV (Giữ nguyên phần đã tốt) === */
-    header { padding: 0.8rem 1rem !important; justify-content: center !important; }
-    header .nav-links, header .auth-buttons { display: none !important; }
+    /* --- A. HEADER & NAV --- */
+    /* --- HEADER MOBILE MỚI (MÀU CAM) --- */
+    .main-header {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 15px !important;
+        background: linear-gradient(135deg, #ff7043, #ff5722) !important;
+        color: white !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+        position: fixed !important;
+        top: 0; left: 0; width: 100%;
+        z-index: 99999 !important; /* Luôn nổi lên trên cùng */
+    }
+
+    .logo-container { display: flex !important; align-items: center !important; gap: 8px !important; }
+    .logo-icon { font-size: 1.6rem !important; }
+    .brand-name { margin: 0 !important; font-size: 1rem !important; font-weight: 800 !important; line-height: 1.2 !important; }
+    .brand-slogan { margin: 0 !important; font-size: 0.65rem !important; opacity: 0.9 !important; }
+
+    .btn-auth-modern {
+        background: rgba(255, 255, 255, 0.25) !important;
+        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        color: white !important;
+        padding: 6px 14px !important;
+        border-radius: 25px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        cursor: pointer !important;
+        backdrop-filter: blur(4px) !important;
+    }
+
+    /* Đẩy nội dung xuống để không bị Header che mất */
+    body { padding-top: 70px !important; }
+    
+    /* Ẩn Menu Desktop cũ */
+    .desktop-only { display: none !important; }
+    header { 
+        padding: 0.8rem 1rem !important; 
+        justify-content: center !important; 
+    }
+    header .nav-links, header .auth-buttons { 
+        display: none !important; 
+    }
 
     .mobile-bottom-nav {
         display: flex !important; justify-content: space-around;
@@ -2098,7 +2145,7 @@ footer.modern-footer {
     .nav-item.active { color: #ff5722; }
     .cart-icon-mobile .badge { position: absolute; top: -5px; right: -8px; background: red; color: white; font-size: 0.6rem; padding: 2px 5px; border-radius: 10px; }
 
-    /* === B. LIST MÓN ĂN (Giữ nguyên phần đã tốt) === */
+    /* --- B. LIST MÓN ĂN --- */
     .modern-grid-menu#menuContainer { display: block !important; padding: 10px 15px 100px 15px !important; }
     .food-card.modern-card {
         display: flex !important; flex-direction: row !important; align-items: center !important;
@@ -2119,287 +2166,135 @@ footer.modern-footer {
     .modern-card .btn-quick-add { width: 32px !important; height: 32px !important; font-size: 1.2rem !important; }
     .modern-card .badge-favorite { display: none !important; }
 
-    /* === C. FIX FORM LOGIN/REGISTER (PHẦN QUAN TRỌNG NHẤT) === */
-    
-    /* 1. Modal Container (Lớp nền mờ tối) */
-.auth-overlay {
-    background: rgba(0, 0, 0, 0.6) !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 0 !important;
-    /* Xóa dòng display: flex !important đi, hoặc đổi thành: */
-    display: flex; /* Bỏ !important đi để JS có thể ẩn nó */
-}
-    /* 2. Modal Content (Không dùng class này cho Auth Container, tránh xung đột) */
-    /* Chúng ta sẽ style trực tiếp vào .auth-container */
-
-    /* 3. Auth Container (Cái hộp trắng chứa form) */
+    /* --- C. FIX FORM LOGIN/REGISTER --- */
+    .auth-overlay {
+        background: rgba(0, 0, 0, 0.6) !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        display: flex; /* Để JS có thể ẩn/hiện */
+    }
     .auth-container {
         position: relative !important;
-        width: 90% !important; /* Chiếm 90% chiều ngang màn hình */
-        max-width: 350px !important; /* Không quá to */
-        height: auto !important; /* Chiều cao tự động theo nội dung */
-        min-height: auto !important; /* Bỏ min-height của PC */
+        width: 90% !important; 
+        max-width: 350px !important; 
+        height: auto !important; 
+        min-height: auto !important; 
         background: #fff !important;
-        border-radius: 20px !important; /* Bo góc đẹp */
+        border-radius: 20px !important; 
         box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
-        overflow: hidden !important; /* Cắt bỏ phần thừa */
-        display: block !important; /* Trở về dạng block đơn giản */
+        overflow: hidden !important; 
+        display: block !important; 
     }
-
-    /* 4. Ẩn hoàn toàn Overlay cam và Nút Ghost */
-    .overlay-container, 
-    .auth-container button.ghost { 
-        display: none !important; 
-    }
-
-    /* 5. Cấu hình Form con (Sign In / Sign Up) */
-    /* Thay vì trượt, ta dùng ẨN/HIỆN (Display: none/block) cho ổn định tuyệt đối */
+    .overlay-container, .auth-container button.ghost { display: none !important; }
     
-    .sign-in-container, 
-    .sign-up-container {
-        position: relative !important; /* Không dùng absolute nữa */
-        width: 100% !important;
-        height: auto !important;
-        top: auto !important; left: auto !important;
-        transform: none !important; /* Bỏ hết hiệu ứng trượt */
-        opacity: 1 !important;
-        z-index: 1 !important;
-        padding: 30px 20px !important; /* Padding chuẩn bên trong hộp */
-        display: none !important; /* Mặc định ẩn hết */
-    }
-
-    /* 6. Logic Hiển Thị (Dựa trên class right-panel-active) */
-    
-    /* Mặc định: Hiện Sign In, Ẩn Sign Up */
-    .auth-container .sign-in-container {
-        display: block !important;
-    }
-    .auth-container .sign-up-container {
-        display: none !important;
-    }
-
-    /* Khi Active (Bấm Đăng Ký): Ẩn Sign In, Hiện Sign Up */
-    .auth-container.right-panel-active .sign-in-container {
-        display: none !important;
-    }
-    .auth-container.right-panel-active .sign-up-container {
-        display: block !important;
-        animation: fadeIn 0.4s ease; /* Hiệu ứng hiện dần nhẹ nhàng */
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* 7. Style Nội dung bên trong */
-    .auth-container form {
-        background: transparent !important;
-        padding: 0 !important;
-        height: auto !important;
-        display: flex !important; 
-        flex-direction: column !important; 
-        align-items: center !important;
+    .sign-in-container, .sign-up-container {
+        position: relative !important; width: 100% !important;
+        height: auto !important; top: auto !important; left: auto !important;
+        transform: none !important; opacity: 1 !important; z-index: 1 !important;
+        padding: 30px 20px !important; display: none !important;
     }
     
+    /* Logic hiển thị Form */
+    .auth-container .sign-in-container { display: block !important; }
+    .auth-container .sign-up-container { display: none !important; }
+    .auth-container.right-panel-active .sign-in-container { display: none !important; }
+    .auth-container.right-panel-active .sign-up-container { display: block !important; animation: fadeIn 0.4s ease; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .auth-container form { background: transparent !important; padding: 0 !important; height: auto !important; display: flex !important; flex-direction: column !important; align-items: center !important; }
     .auth-container h1 { font-size: 24px !important; margin-bottom: 20px !important; text-align: center !important; color: #ff7043 !important; }
-    .auth-container input { 
-        width: 100% !important; 
-        padding: 12px 15px !important; 
-        margin: 8px 0 !important; 
-        font-size: 16px !important; 
-        border: 1px solid #ddd !important;
-        border-radius: 8px !important;
-        background: #f9f9f9 !important;
-    }
-    .auth-container button { 
-        width: 100% !important; 
-        padding: 12px !important; 
-        font-size: 16px !important; 
-        margin-top: 15px !important; 
-        border-radius: 25px !important;
-        background: linear-gradient(135deg, #ff7043, #ff9966) !important;
-    }
+    .auth-container input { width: 100% !important; padding: 12px 15px !important; margin: 8px 0 !important; font-size: 16px !important; border: 1px solid #ddd !important; border-radius: 8px !important; background: #f9f9f9 !important; }
+    .auth-container button { width: 100% !important; padding: 12px !important; font-size: 16px !important; margin-top: 15px !important; border-radius: 25px !important; background: linear-gradient(135deg, #ff7043, #ff9966) !important; }
     .social-container { margin: 15px 0 !important; }
     .social-container a { width: 40px !important; height: 40px !important; font-size: 1.2rem !important; }
-    
-    /* 8. Hiện nút chuyển đổi Mobile */
     .mobile-switch-text { display: block !important; }
-    
-    /* 9. Nút đóng modal (X) */
-    #close-auth-modal {
-        color: #333 !important; /* Đổi màu nút X thành đen để nhìn thấy trên nền trắng */
-        top: 10px !important;
-        right: 15px !important;
-        font-size: 28px !important;
+    #close-auth-modal { color: #333 !important; top: 10px !important; right: 15px !important; font-size: 28px !important; }
+
+    /* --- D. HEADER MOBILE MÀU CAM & NÚT ĐĂNG NHẬP --- */
+ .main-header {
+        display: flex !important;
+        justify-content: space-between !important; /* Đẩy Logo sang trái, Nút sang phải */
+        align-items: center !important;
+        padding: 0 15px !important; /* Giảm padding để nút ra sát biên hơn */
+        background: linear-gradient(135deg, #ff7043, #ff5722) !important;
+        color: white !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+        position: fixed !important; 
+        top: 0; left: 0; width: 100%; 
+        z-index: 1000000 !important; /* Đảm bảo luôn nằm trên cùng */
+        height: 60px !important; /* Cố định chiều cao để căn chỉnh chuẩn */
     }
-}
-/* Ép nút đóng phải nổi lên trên cùng của vũ trụ */
-#password-setup-modal .auth-container span {
-    z-index: 2147483647 !important; /* Số lớn nhất có thể trong CSS */
-    position: absolute !important;
-    cursor: pointer !important;
-    pointer-events: auto !important; /* Bắt buộc nhận chuột */
-}
+    body {
+        padding-top: 80px !important; /* Đẩy nội dung xuống 80px để nhường chỗ cho Header */
+    }
+    .logo-container { display: flex; align-items: center; gap: 8px; }
+    .logo-icon { font-size: 1.6rem; }
+    .brand-name { margin: 0; font-size: 1rem; font-weight: 800; line-height: 1.2; }
+    .brand-slogan { margin: 0; font-size: 0.65rem; opacity: 0.9; }
+    .btn-auth-modern {
+        background: rgba(255, 255, 255, 0.25); border: 1px solid rgba(255, 255, 255, 0.6);
+        color: white; padding: 6px 14px; border-radius: 25px;
+        font-weight: 600; font-size: 0.85rem;
+        display: flex; align-items: center; gap: 6px; cursor: pointer;
+        backdrop-filter: blur(4px);
+    }
+    .desktop-only { display: none !important; }
 
-/* Đảm bảo form nhận được click */
-#password-setup-modal .auth-container {
-    pointer-events: auto !important;
-    z-index: 2147483646 !important;
-}
-/* Đảm bảo widget chat luôn nằm trên mọi thứ (kể cả Modal đăng nhập) */
-#ai-chat-widget {
-    position: fixed;
-    z-index: 2147483647 !important;
-}
+    /* --- E. CHATBOX & PROFILE --- */
+    #ai-toggle-btn { bottom: 90px !important; right: 15px !important; }
+    #ai-chat-window { bottom: 160px !important; width: 92% !important; height: 60vh !important; border-radius: 20px !important; right: 4% !important; left: 4% !important; }
+    #chat-bubble { display: none !important; }
 
-#ai-toggle-btn {
-    bottom: 90px !important; /* Luôn nằm trên thanh Menu Mobile */
-}
+    /* GIAO DIỆN PROFILE APP (Đã sửa lỗi đóng ngoặc) */
+    .profile-new-design {
+        background-color: #f8f9fa;
+        min-height: 100vh;
+        padding-bottom: 120px;
+        /* Ép tràn viền */
+        margin: 0 !important; width: 100% !important; max-width: 100% !important;
+    }
 
-#ai-chat-window {
-    bottom: 160px !important;
-}
+    .profile-header-section {
+        background: linear-gradient(180deg, #ff7043 0%, #ff8a65 100%);
+        padding: 60px 20px 40px; text-align: center;
+        border-bottom-left-radius: 40px; border-bottom-right-radius: 40px;
+        color: white; box-shadow: 0 4px 15px rgba(255, 112, 67, 0.2);
+    }
 
-/* Ẩn nút chat cũ nếu bạn lỡ quên chưa xóa ở trang khác */
-#chat-bubble { display: none !important; }
-/* --- GIAO DIỆN PROFILE HIỆN ĐẠI --- */
-.profile-new-design {
-    background-color: #f8f9fa;
-    min-height: 100vh;
-    padding-bottom: 120px;
-}
+    .avatar-container { position: relative; width: 100px; height: 100px; margin: 0 auto 15px; }
+    .avatar-container img { width: 100%; height: 100%; border-radius: 50%; border: 4px solid rgba(255, 255, 255, 0.3); object-fit: cover; background: white; }
+    .camera-badge { position: absolute; bottom: 0; right: 0; background: white; color: #ff7043; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 0.9rem; }
+    .user-display-name { font-size: 1.5rem; font-weight: 700; margin: 0; color: #ffffff !important; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .user-badge { font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; margin-top: 5px; display: inline-block; }
 
-/* Phần Header màu cam bo góc */
-.profile-header-section {
-    background: linear-gradient(180deg, #ff7043 0%, #ff8a65 100%);
-    padding: 60px 20px 40px;
-    text-align: center;
-    border-bottom-left-radius: 40px;
-    border-bottom-right-radius: 40px;
-    color: white;
-    box-shadow: 0 4px 15px rgba(255, 112, 67, 0.2);
+    .profile-menu-container { padding: 0 15px; margin-top: -20px; position: relative; z-index: 2; }
+    .menu-group { background: white; border-radius: 18px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+   .menu-item-left {
+    display: flex !important;
+    align-items: center !important; /* Căn giữa icon và chữ theo chiều dọc */
+    gap: 15px; /* Khoảng cách giữa icon và chữ */
 }
+    .menu-item-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; cursor: pointer; border-bottom: 1px solid #f8f9fa; }
+    .menu-item-row:last-child { border-bottom: none; }
+    .icon-box { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1rem; }
+    .security { background: #4dabf7; } 
+    .history { background: #ff922b; }  
+    .status { background: #51cf66; }   
+    .logout { background: #ff6b6b; }   
+    .arrow-icon { color: #ccc; font-size: 0.9rem; }
+    .logout-text { color: #ff6b6b !important; font-weight: 600 !important; }
 
-.avatar-container {
-    position: relative;
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 15px;
-}
+    .collapsible-form { padding: 0 20px 20px; background: #fdfdfd; }
+    .collapsible-form input { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #eee; border-radius: 10px; background: #fff; outline: none; }
+    .btn-save-modern { width: 100%; margin-top: 15px; padding: 12px; background: #ff7043; color: white; border: none; border-radius: 10px; font-weight: 600; }
+    .footer-action { padding: 20px; }
+    .btn-outline-home { width: 100%; padding: 14px; border: 1px solid #eee; background: white; border-radius: 15px; color: #888; font-weight: 600; }
 
-.avatar-container img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    object-fit: cover;
-    background: white;
-}
+    /* --- F. FOOTER MOBILE --- */
+    footer.modern-footer { padding: 25px 20px 85px !important; }
+    .footer-content { flex-direction: column !important; align-items: center !important; gap: 15px !important; }
+    .footer-links-group { display: flex !important; justify-content: center !important; flex-wrap: wrap !important; gap: 10px !important; }
 
-.camera-badge {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    background: white;
-    color: #ff7043;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    font-size: 0.9rem;
-}
-
-.user-display-name { 
-    font-size: 1.5rem; 
-    font-weight: 700; 
-    margin: 0; 
-    color: #ffffff !important; /* Ép chữ thành màu trắng tinh */
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Thêm bóng đổ nhẹ để chữ nổi bật hơn trên nền cam */
-}
-.user-badge { font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; margin-top: 5px; display: inline-block; }
-
-/* Menu List Style */
-.profile-menu-container {
-    padding: 0 15px;
-    margin-top: -20px; /* Đẩy menu đè lên header nhẹ */
-}
-
-.menu-group {
-    background: white;
-    border-radius: 18px;
-    margin-bottom: 15px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-
-.menu-item-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    cursor: pointer;
-    border-bottom: 1px solid #f8f9fa;
-    transition: background 0.2s;
-}
-
-.menu-item-row:active { background-color: #f1f1f1; }
-.menu-item-row:last-child { border-bottom: none; }
-
-.menu-item-left { display: flex; align-items: center; gap: 15px; }
-.menu-item-left span { font-weight: 500; color: #333; font-size: 1rem; }
-
-/* Các hộp icon nhiều màu sắc */
-.icon-box {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    color: white; font-size: 1.1rem;
-}
-.security { background: #4dabf7; } /* Blue */
-.history { background: #ff922b; }  /* Orange */
-.status { background: #51cf66; }   /* Green */
-.logout { background: #ff6b6b; }   /* Red */
-
-.arrow-icon { color: #ccc; font-size: 0.9rem; }
-.logout-text { color: #ff6b6b !important; font-weight: 600 !important; }
-
-/* Style cho Form Đổi mật khẩu lồng bên trong */
-.collapsible-form {
-    padding: 0 20px 20px;
-    background: #fdfdfd;
-}
-.collapsible-form input {
-    width: 100%;
-    padding: 12px;
-    margin-top: 10px;
-    border: 1px solid #eee;
-    border-radius: 10px;
-    background: #fff;
-    outline: none;
-}
-.btn-save-modern {
-    width: 100%;
-    margin-top: 15px;
-    padding: 12px;
-    background: #ff7043;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-}
-
-.footer-action { padding: 20px; }
-.btn-outline-home {
-    width: 100%;
-    padding: 14px;
-    border: 1px solid #eee;
-    background: white;
-    border-radius: 15px;
-    color: #888;
-    font-weight: 600;
-}
+} /* ✅ DẤU ĐÓNG CUỐI CÙNG QUAN TRỌNG NHẤT */
