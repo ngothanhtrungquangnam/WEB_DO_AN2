@@ -2288,7 +2288,31 @@ footer.modern-footer {
 
     .collapsible-form { padding: 0 20px 20px; background: #fdfdfd; }
     .collapsible-form input { width: 100%; padding: 12px; margin-top: 10px; border: 1px solid #eee; border-radius: 10px; background: #fff; outline: none; }
-    .btn-save-modern { width: 100%; margin-top: 15px; padding: 12px; background: #ff7043; color: white; border: none; border-radius: 10px; font-weight: 600; }
+   /* Style cho nút Lưu mật khẩu đẹp hơn */
+.btn-save-modern {
+    width: 100% !important;
+    margin-top: 15px !important;
+    padding: 12px !important;
+    background: linear-gradient(135deg, #ff7043, #ff5722) !important; /* Màu cam */
+    color: white !important;
+    border: none !important;
+    border-radius: 30px !important; /* Bo tròn */
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 10px rgba(255, 112, 67, 0.3) !important;
+    transition: transform 0.2s;
+}
+
+.btn-save-modern:hover {
+    transform: scale(1.02);
+    opacity: 0.9;
+}
+
+/* Khoảng cách các ô input */
+.collapsible-form input {
+    margin-bottom: 10px !important;
+}
     .footer-action { padding: 20px; }
     .btn-outline-home { width: 100%; padding: 14px; border: 1px solid #eee; background: white; border-radius: 15px; color: #888; font-weight: 600; }
 
@@ -2298,3 +2322,130 @@ footer.modern-footer {
     .footer-links-group { display: flex !important; justify-content: center !important; flex-wrap: wrap !important; gap: 10px !important; }
 
 } /* ✅ DẤU ĐÓNG CUỐI CÙNG QUAN TRỌNG NHẤT */
+/* ======================================================
+   FIX: ẨN THANH MENU DƯỚI ĐÁY KHI DÙNG MÁY TÍNH
+   (Áp dụng cho cả Admin và User)
+   ====================================================== */
+@media screen and (min-width: 769px) {
+    /* Ẩn khung chứa menu dưới đáy */
+    #bottom-nav-placeholder, 
+    .mobile-bottom-nav {
+        display: none !important;
+    }
+}
+/* ================================================================
+   FIX GIAO DIỆN PROFILE: CHỈNH SỬA KHỐI THẺ (KHÔNG CAN THIỆP BODY)
+   ================================================================ */
+
+@media screen and (min-width: 769px) {
+    
+    /* 1. Thiết lập khối Profile thành dạng thẻ nằm giữa */
+    .profile-new-design {
+        /* Căn giữa tự động */
+        margin: 50px auto !important; 
+        
+        /* Kích thước thẻ */
+        width: 100% !important;
+        max-width: 500px !important; 
+        
+        /* Màu nền thẻ là trắng */
+        background: #ffffff !important;
+        
+        /* Bo góc và đổ bóng để nổi bật trên nền xám của Admin */
+        border-radius: 20px !important;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid #e0e0e0 !important;
+        
+        /* Đảm bảo nội dung không tràn ra ngoài */
+        overflow: hidden !important;
+        min-height: auto !important;
+        padding-bottom: 30px !important;
+        display: block !important;
+        position: relative;
+        z-index: 10;
+    }
+
+    /* 2. Header màu cam bên trong thẻ (Giữ nguyên vẻ đẹp) */
+    .profile-header-section {
+        background: linear-gradient(135deg, #ff7043, #ff9966) !important;
+        border-bottom-left-radius: 50% 20px !important;
+        border-bottom-right-radius: 50% 20px !important;
+        padding: 40px 20px 50px !important;
+        margin-bottom: 20px !important;
+        text-align: center;
+        color: white;
+    }
+
+    /* 3. Căn chỉnh menu icon và chữ thẳng hàng */
+    .menu-item-row {
+        padding: 15px 40px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        transition: background 0.2s;
+    }
+    .menu-item-row:hover {
+        background-color: #f5f5f5 !important;
+        cursor: pointer;
+    }
+
+    .menu-item-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
+    }
+
+    /* 4. Nút quay về */
+    .footer-action {
+        padding: 20px 40px !important;
+        text-align: center;
+    }
+    .btn-outline-home {
+        padding: 10px 25px !important;
+        border-radius: 30px !important;
+        border: 1px solid #ccc !important;
+        background: white !important;
+        width: auto !important;
+    }
+}
+/* ================================================================
+   FIX LỖI MENU BỊ LỆCH VÀ HIỂN THỊ NÚT ĐĂNG NHẬP
+   (Dán vào cuối file style.css)
+   ================================================================ */
+
+/* 1. Ép thanh menu tự động căn giữa để không bị lệch sang phải */
+header .nav-links, 
+#desktop-nav-block .nav-links-pc {
+    margin: 0 auto !important; /* Quan trọng: Đẩy menu vào giữa */
+    flex-grow: 1; /* Chiếm khoảng trống */
+    justify-content: center; /* Căn giữa các item con */
+}
+
+/* 2. Đảm bảo Logo đứng yên bên trái */
+header .logo, 
+#desktop-nav-block .logo-pc {
+    flex-shrink: 0;
+    margin-right: 20px;
+}
+
+/* 3. Đảm bảo khối chứa nút Auth đứng yên bên phải */
+.header-actions {
+    flex-shrink: 0;
+    margin-left: 20px;
+    min-width: 100px; /* Giữ chỗ để không bị co */
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* 4. Style lại nút Đăng nhập cho đẹp */
+#authButton {
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+#authButton:hover {
+    background-color: white;
+    color: #ff7043;
+}

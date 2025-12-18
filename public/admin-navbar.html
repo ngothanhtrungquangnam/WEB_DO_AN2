@@ -1,46 +1,56 @@
 <header>
     <div class="logo">🍜 Quản lý quán ăn</div>
+    
     <nav class="nav-links">
         <a href="index.html">Trang chủ</a>
         <a href="admin.html" id="nav-admin-link">Quản lý đơn</a>
-        <a class="nav-link" id="nav-table-link" href="admin-ban.html">Quản lý bàn</a>
-        <a href="/admin-dashboard.html" id="nav-stats-link" >Thống kê </a>
-
+        <a href="admin-ban.html" id="nav-table-link">Quản lý bàn</a>
+        <a href="/admin-dashboard.html" id="nav-stats-link">Thống kê</a>
         <div class="dropdown" id="utilityDropdown">
             <button class="dropbtn">Tiện ích</button>
             <div class="dropdown-content">
-                <a href="profile.html">👤 Thông tin </a>
-                <a href="/admin-zalopay-history.html">📜 Lịch sử chuyển khoản </a>
+                <a href="profile.html">👤 Thông tin</a>
+                <a href="/admin-zalopay-history.html">📜 Lịch sử chuyển khoản</a>
                 <a href="/quan-ly-mon-an.html">🍴 Quản lý món ăn</a>
             </div>
         </div>
     </nav>
 
-    <div class="header-actions">
+    <div class="header-actions" id="headerAuthBlock" style="display: none;">
         <button class="btn" id="authButton" style="width: auto; padding: 8px 16px;">Đăng nhập</button>
-       
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Lấy thông tin user từ LocalStorage
             const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-            const authButton = document.getElementById('authButton');
+            
+            // Lấy các phần tử cần thao tác
+            const authBlock = document.getElementById('headerAuthBlock');
+            const authBtn = document.getElementById('authButton');
 
-            // 1. Xử lý nút Đăng nhập
-            if (userInfo && userInfo.username) {
-                authButton.textContent = `Đăng xuất (${userInfo.username})`;
-                authButton.addEventListener("click", () => {
-                    localStorage.clear();
-                    window.location.href = '/index.html';
-                });
-            } else {
-                authButton.textContent = 'Đăng nhập';
-                authButton.addEventListener("click", () => { window.location.href = '/login.html'; });
+            // === 1. LOGIC ẨN/HIỆN NÚT ĐĂNG NHẬP ===
+            if (userInfo) {
+                // TRƯỜNG HỢP A: ĐÃ ĐĂNG NHẬP (Admin hoặc User)
+                // => Tuyệt đối KHÔNG hiển thị nút này (Vì đã có trong Profile)
+                if(authBlock) authBlock.style.setProperty('display', 'none', 'important');
+            } 
+            else {
+                // TRƯỜNG HỢP B: KHÁCH VÃNG LAI (Chưa đăng nhập)
+                // => Bắt buộc HIỆN nút để người ta bấm
+                if(authBlock) authBlock.style.display = 'flex';
+                
+                if(authBtn) {
+                    authBtn.textContent = 'Đăng nhập';
+                    authBtn.onclick = function() {
+                        window.location.href = '/login.html'; // Chuyển trang login
+                    };
+                }
             }
 
-            // 2. Nếu KHÔNG PHẢI ADMIN thì mới ẩn các nút đi
+            // === 2. LOGIC ẨN MENU ADMIN (Nếu không phải Admin) ===
             if (!userInfo || userInfo.role !== 'admin') {
-                const adminIds = ['nav-order-link', 'nav-admin-link', 'nav-table-link', 'nav-stats-link', 'utilityDropdown'];
+                const adminIds = ['nav-admin-link', 'nav-table-link', 'nav-stats-link'];
                 adminIds.forEach(id => {
                     const el = document.getElementById(id);
                     if(el) el.style.display = 'none';
