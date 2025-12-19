@@ -6,21 +6,14 @@ const bcrypt = require('bcryptjs'); // ✅ Đảm bảo bcryptjs đã được i
 const JWT_SECRET = process.env.JWT_SECRET || 'QUAN_AN_NGON_SECRET_KEY_123456';
 const nodemailer = require('nodemailer');
 
-// --- CẤU HÌNH GỬI MAIL (ĐÃ TỐI ƯU CHO RENDER) ---
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,            // Cổng 587 (Render cho phép)
-    secure: false,        // Bắt buộc là false với cổng 587
-    auth: {
-        user: 'ngo178384@gmail.com',
-        pass: 'kbdq yhky suxq zfxd' 
-    },
-    tls: {
-        rejectUnauthorized: false // Tránh lỗi chứng chỉ SSL
-    },
-    family: 4, // 🔥 QUAN TRỌNG: Ép dùng IPv4 để tránh lỗi mạng treo trên Render
-    connectionTimeout: 10000, // 🔥 Ngắt kết nối sau 10s nếu không được (để không bị treo mãi)
-    greetingTimeout: 5000     // 🔥 Ngắt nếu Gmail không phản hồi sau 5s
+  host: process.env.SMTP_HOST, // smtp.gmail.com
+  port: process.env.SMTP_PORT, // 465
+  secure: true, // Dùng true cho port 465
+  auth: {
+    user: process.env.SMTP_EMAIL,
+    pass: process.env.SMTP_PASSWORD,
+  },
 });
 // === Hàm tạo token (JWT) ===
 function generateToken(id, role) {
@@ -409,13 +402,18 @@ exports.forgotPassword = async (req, res) => {
 
         res.json({ success: true, message: 'Đã gửi mã OTP vào email!' });
 
-    } catch (error) {
-        console.error("🔥 LỖI GỬI MAIL:", error); // Log Lỗi
+    } catch (err) {
+    console.log(err); // In lỗi ra để xem
+    
+    // Thêm dòng kiểm tra này: Chỉ reset nếu biến user thực sự tồn tại
+    if (typeof user !== 'undefined' && user) {
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
-        await user.save();
-        res.status(500).json({ message: 'Lỗi gửi email: ' + error.message });
+        await user.save({ validateBeforeSave: false });
     }
+
+    return next(new ErrorResponse('Email could not be sent', 500));
+}
 };
 
 
