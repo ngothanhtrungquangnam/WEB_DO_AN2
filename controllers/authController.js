@@ -6,12 +6,21 @@ const bcrypt = require('bcryptjs'); // ✅ Đảm bảo bcryptjs đã được i
 const JWT_SECRET = process.env.JWT_SECRET || 'QUAN_AN_NGON_SECRET_KEY_123456';
 const nodemailer = require('nodemailer');
 
+// --- CẤU HÌNH GỬI MAIL (ĐÃ TỐI ƯU CHO RENDER) ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: "smtp.gmail.com",
+    port: 587,            // Cổng 587 (Render cho phép)
+    secure: false,        // Bắt buộc là false với cổng 587
     auth: {
-        user: 'ngo178384@gmail.com', // 📧 Thay bằng email của bạn
-        pass: 'kbdq yhky suxq zfxd' // 🔑 Mật khẩu ứng dụng (Không phải mật khẩu đăng nhập)
-    }
+        user: 'ngo178384@gmail.com',
+        pass: 'kbdq yhky suxq zfxd' 
+    },
+    tls: {
+        rejectUnauthorized: false // Tránh lỗi chứng chỉ SSL
+    },
+    family: 4, // 🔥 QUAN TRỌNG: Ép dùng IPv4 để tránh lỗi mạng treo trên Render
+    connectionTimeout: 10000, // 🔥 Ngắt kết nối sau 10s nếu không được (để không bị treo mãi)
+    greetingTimeout: 5000     // 🔥 Ngắt nếu Gmail không phản hồi sau 5s
 });
 // === Hàm tạo token (JWT) ===
 function generateToken(id, role) {
@@ -371,43 +380,44 @@ exports.setInitialPassword = async (req, res) => {
         return res.status(500).json({ message: 'Lỗi server khi cập nhật mật khẩu.' });
     }
 };
-// 1. GỬI YÊU CẦU QUÊN MẬT KHẨU
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
+    console.log("👉 Bắt đầu xử lý quên mật khẩu cho:", email); // Log 1
+
     try {
         const user = await User.findOne({ email });
         if (!user) {
+            console.log("❌ Không tìm thấy email"); // Log 2
             return res.status(404).json({ message: 'Email này chưa được đăng ký.' });
         }
 
-        // Tạo mã OTP ngẫu nhiên 6 số
         const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
-
-        // Lưu vào DB (Hết hạn sau 15 phút)
         user.resetPasswordToken = resetToken;
         user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; 
         await user.save();
 
-        // Gửi Email
         const mailOptions = {
-            from: '"Quán Ăn Ngon Support" <no-reply@quananngon.com>',
+            from: '"Quán Ăn Ngon" <ngo178384@gmail.com>',
             to: user.email,
             subject: 'Mã xác thực đổi mật khẩu',
-            text: `Mã OTP của bạn là: ${resetToken}. Mã có hiệu lực trong 15 phút.`
+            text: `Mã OTP của bạn là: ${resetToken}`
         };
 
+        console.log("🚀 Đang gửi mail..."); // Log 3
         await transporter.sendMail(mailOptions);
+        console.log("✅ Gửi mail thành công!"); // Log 4
 
-        res.json({ success: true, message: 'Đã gửi mã OTP vào email. Vui lòng kiểm tra!' });
+        res.json({ success: true, message: 'Đã gửi mã OTP vào email!' });
 
     } catch (error) {
-        console.error("Lỗi gửi mail:", error);
+        console.error("🔥 LỖI GỬI MAIL:", error); // Log Lỗi
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
         await user.save();
-        res.status(500).json({ message: 'Lỗi gửi email. Vui lòng thử lại.' });
+        res.status(500).json({ message: 'Lỗi gửi email: ' + error.message });
     }
 };
+
 
 // 2. THAY THẾ TOÀN BỘ HÀM resetPassword CŨ BẰNG HÀM NÀY
 exports.resetPassword = async (req, res) => {
