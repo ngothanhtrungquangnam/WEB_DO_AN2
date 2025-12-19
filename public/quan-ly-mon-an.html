@@ -3,129 +3,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý món ăn</title>
-    <link rel="stylesheet" href="style.css"> 
-    <style>
-        /* CSS cũ của bạn (Giữ nguyên) */
-        .admin-container { padding: 20px; max-width: 1000px; margin: auto; }
-        #add-mon-an-form { margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background: #f9f9f9; }
-        #add-mon-an-form input, #add-mon-an-form button { display: block; width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 10px; font-size: 1rem; }
-        .mon-an-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
-        .mon-an-item { border: 1px solid #ddd; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .mon-an-item img { width: 100%; height: 150px; object-fit: cover; border-radius: 3px; }
-        .mon-an-item h4 { margin: 10px 0 5px 0; }
-        .mon-an-item p { margin: 5px 0; }
-        .delete-btn { background-color: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; width: 100%; }
-        .delete-btn:hover { background-color: #c93030; }
-
-        /* === 1. CSS CHO NÚT MỚI === */
-       /* === 1. DÁN CSS CHO NÚT MỚI VÀO ĐÂY === */
-.btn-back {
-    display: inline-block;
-    padding: 0.75rem 1.25rem;
+    <title>Quản lý Món Ăn</title>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    /* === SỬA MÀU SẮC === */
-    background-color: #f07c56; /* Màu cam (giống nút Thêm) */
-    color: #ffffff; /* Màu chữ trắng */
-    border: none; /* Bỏ viền xám */
-    /* =================== */
+    <style>
+        :root {
+            /* Tông màu CAM chủ đạo */
+            --primary: #f97316;       /* Cam tươi */
+            --primary-hover: #ea580c; /* Cam đậm */
+            --primary-light: #fff7ed; /* Cam rất nhạt (nền) */
+            --bg-body: #f3f4f6;       /* Xám nhạt */
+            --white: #ffffff;
+            --text-main: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    text-decoration: none;
-    border-radius: 8px;
-    font-weight: 500;
-    font-size: 0.95rem;
-    transition: background-color 0.2s, box-shadow 0.2s;
-}
-.btn-back:hover {
-    /* Sửa màu khi di chuột */
-    background-color: #e65c00; /* Màu cam đậm hơn */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Be Vietnam Pro', sans-serif; }
+        
+        body { background-color: var(--bg-body); color: var(--text-main); padding-bottom: 40px; }
+
+        /* --- HEADER --- */
+        .top-bar {
+            background: var(--white);
+            padding: 15px 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .brand { font-size: 1.25rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        
+        .btn-back {
+            text-decoration: none; color: var(--text-light); font-weight: 500; font-size: 0.95rem;
+            padding: 8px 16px; border-radius: 8px; transition: 0.2s; background: transparent; border: 1px solid var(--border);
+        }
+        .btn-back:hover { background: var(--white); color: var(--primary); border-color: var(--primary); }
+
+        /* --- LAYOUT CHÍNH --- */
+        .main-container {
+            max-width: 1400px; margin: 30px auto; padding: 0 20px;
+            display: grid; grid-template-columns: 360px 1fr; gap: 25px; align-items: start;
+        }
+
+        /* CARD CHUNG */
+        .card {
+            background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow);
+            overflow: hidden; border: 1px solid var(--border);
+        }
+        .card-header { padding: 20px; border-bottom: 1px solid var(--border); background: #fffcf9; }
+        .card-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0; }
+        .card-body { padding: 20px; }
+
+        /* --- FORM (BÊN TRÁI) --- */
+        .form-group { margin-bottom: 15px; }
+        .form-label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: #374151; }
+        
+        .form-input {
+            width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 0.95rem; transition: 0.2s; background: #f9fafb; outline: none;
+        }
+        .form-input:focus {
+            background: var(--white); border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-light);
+        }
+
+        /* Nút Submit */
+        .btn-submit {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), #fb923c);
+            color: white; font-weight: 600; font-size: 1rem; cursor: pointer;
+            transition: all 0.2s; margin-top: 10px;
+        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3); }
+
+        .btn-cancel {
+            width: 100%; padding: 12px; border: none; border-radius: 8px;
+            background: #e5e7eb; color: var(--text-main); font-weight: 600;
+            cursor: pointer; margin-top: 10px; display: none; /* JS sẽ bật nó lên */
+        }
+
+        /* --- TABLE (BÊN PHẢI) --- */
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 650px; }
+        
+        thead { background: var(--primary-light); }
+        th {
+            text-align: left; padding: 16px; font-size: 0.8rem; text-transform: uppercase;
+            font-weight: 700; color: var(--primary); letter-spacing: 0.5px;
+        }
+        td { padding: 16px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.95rem; }
+        tr:hover td { background: #fafafa; }
+
+        /* Style cho Ảnh và Nút do JS tạo ra */
+        .mon-img-style {
+            width: 60px; height: 60px; object-fit: cover; border-radius: 10px;
+            border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .action-group { display: flex; gap: 8px; }
+        
+    .btn-action i {
+        pointer-events: none; /* Giúp click xuyên qua icon */
+        font-size: 1rem;      /* Chỉnh icon to rõ hơn */
+    }
+    /* =============================== */
+
+    .btn-edit-style { background: #dbeafe; color: #2563eb; }
+    .btn-edit-style:hover { background: #2563eb; color: white; transform: scale(1.1); }
+    
+    .btn-delete-style { background: #fee2e2; color: #dc2626; }
+    .btn-delete-style:hover { background: #dc2626; color: white; transform: scale(1.1); }
+        /* Responsive Mobile */
+        @media (max-width: 900px) {
+            .main-container { grid-template-columns: 1fr; }
+            .top-bar { flex-direction: column; gap: 10px; align-items: flex-start; }
+            .btn-back { width: 100%; text-align: center; }
+        }
     </style>
 </head>
 <body>
 
-    <div style="max-width: 1400px; margin: 2rem auto 0; padding: 0 2rem;">
-        <a href="/admin.html" class="btn-back">
-            &larr; Quay lại 
-        </a>
-    </div>
-    <div class="admin-page-container" style="margin-top: 1.5rem;">
-        <div style="padding: 20px;">
-    <a href="admin.html" class="btn-back" style="text-decoration: none; background: #f07c56; color: white; padding: 10px 20px; border-radius: 5px; font-weight: bold;">
-        &larr; Trở về trang Admin
-    </a>
-</div>
-    
-    <div class="admin-card form-container">
-    <h2>Thêm món ăn mới</h2>
-    
-    <form id="add-mon-an-form">
-        
-        <input type="hidden" id="mon-id">
-        
-        <div class="form-group">
-            <label for="mon-name">Tên món ăn</label>
-            <input type="text" id="mon-name" placeholder="Vd: Bún Bò Huế" required>
+    <div class="top-bar">
+        <div class="brand">
+            <i class="fa-solid fa-utensils"></i> QUẢN LÝ THỰC ĐƠN
         </div>
-        
-        <div class="form-group">
-            <label for="mon-price">Giá (VND)</label>
-            <input type="number" id="mon-price" placeholder="Vd: 55000" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="mon-image">URL hình ảnh</label>
-            <input type="text" id="mon-image" placeholder="https://..." required>
-        </div>
-
-<div class="form-group">
-    <label for="mon-category">Loại món ăn</label>
-    <select id="mon-category" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-        <option value="" disabled selected>-- Chọn loại món --</option>
-        
-        <option value="flash-sale" style="color: red; font-weight: bold;">⚡ Flash Sale (Deal Sốc)</option>
-        
-        <option value="Món nước">Món nước</option>
-        <option value="Món khô">Món khô</option>
-        <option value="Nước uống">Nước uống</option>
-        <option value="Khác">Khác</option>
-    </select>
-</div>
-        
-        <button type="submit" class="btn btn-primary">Thêm món</button>
-        
-        <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="display:none;">Hủy</button>
-    </form>
-</div>
-
-    <div class="admin-card list-container">
-        <h2>Danh sách món ăn</h2>
-        
-        <div class="table-wrapper">
-            <table>
-                <thead>
-    <tr>
-        <th>Hình ảnh</th>
-        <th>Tên món ăn</th>
-        <th>Giá</th>
-        <th>Loại</th>
-        <th>Hành động</th>
-    </tr>
-</thead>
-                <tbody id="mon-an-list-container">
-                    <div style="max-width: 1400px; margin: 20px auto; padding: 0 20px;">
         <a href="admin.html" class="btn-back">
-            &larr; Trở về trang Admin
+            <i class="fa-solid fa-arrow-left"></i> Trở về Dashboard
         </a>
     </div>
-                </tbody>
-            </table>
+
+    <div class="main-container">
+        
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Thông tin món ăn</h3>
+            </div>
+            <div class="card-body">
+                <form id="add-mon-an-form">
+                    <input type="hidden" id="mon-id">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Tên món ăn</label>
+                        <input type="text" id="mon-name" class="form-input" placeholder="Ví dụ: Bún Bò Huế" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Giá bán (VNĐ)</label>
+                        <input type="number" id="mon-price" class="form-input" placeholder="Ví dụ: 35000" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Link hình ảnh</label>
+                        <input type="text" id="mon-image" class="form-input" placeholder="https://..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Danh mục</label>
+                        <select id="mon-category" class="form-input" required>
+                            <option value="" disabled selected>-- Chọn loại món --</option>
+                            <option value="flash-sale" style="color: #ea580c; font-weight: bold;">⚡ Flash Sale</option>
+                            <option value="Món nước">🍜 Món nước</option>
+                            <option value="Món khô">🍛 Món khô</option>
+                            <option value="Nước uống">🥤 Nước uống</option>
+                            <option value="Khác">🍽️ Khác</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-submit" id="save-btn">
+                        <i class="fa-solid fa-plus"></i> Lưu món ăn
+                    </button>
+                    <button type="button" class="btn-cancel" id="cancel-edit-btn">Hủy bỏ</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Danh sách thực đơn</h3>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="80">Ảnh</th>
+                            <th>Tên món</th>
+                            <th>Giá bán</th>
+                            <th>Loại</th>
+                            <th width="100">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mon-an-list-container">
+                        </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-</div>
-    <script src="js/quan-ly-mon-an.js"></script> 
+    <script src="js/quan-ly-mon-an.js"></script>
+
+    <script>
+        // Đoạn script này tự động phát hiện khi JS gốc thêm dòng mới vào bảng
+        // và lập tức "trang điểm" cho các nút bấm và hình ảnh đẹp hơn.
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    enhanceUI();
+                }
+            });
+        });
+
+        const listContainer = document.getElementById('mon-an-list-container');
+        if (listContainer) {
+            observer.observe(listContainer, { childList: true });
+        }
+
+        function enhanceUI() {
+            const rows = document.querySelectorAll('#mon-an-list-container tr');
+            rows.forEach(row => {
+                // 1. Làm đẹp Ảnh
+                const img = row.querySelector('img');
+                if (img && !img.classList.contains('mon-img-style')) {
+                    img.classList.add('mon-img-style');
+                }
+
+                // 2. Làm đẹp nút Sửa
+                // Tìm nút đầu tiên trong cột Hành động (thường là Sửa)
+                const actionCell = row.cells[row.cells.length - 1];
+                if(actionCell) {
+                    const buttons = actionCell.querySelectorAll('button');
+                    
+                    // Giả sử nút đầu tiên là Sửa, nút thứ 2 là Xóa
+                    if (buttons.length >= 1) {
+                        const editBtn = buttons[0];
+                        editBtn.classList.add('btn-action', 'btn-edit-style');
+                        if(!editBtn.innerHTML.includes('fa-')) editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                    }
+                    
+                    if (buttons.length >= 2) {
+                        const deleteBtn = buttons[1]; // Hoặc class .delete-btn
+                        deleteBtn.classList.add('btn-action', 'btn-delete-style');
+                        if(!deleteBtn.innerHTML.includes('fa-')) deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                    }
+
+                    // Gom nhóm nút nếu chưa gom
+                    if (!actionCell.querySelector('.action-group')) {
+                        const div = document.createElement('div');
+                        div.className = 'action-group';
+                        while (actionCell.firstChild) {
+                            div.appendChild(actionCell.firstChild);
+                        }
+                        actionCell.appendChild(div);
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>
