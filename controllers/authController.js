@@ -7,13 +7,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'QUAN_AN_NGON_SECRET_KEY_123456';
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST, // smtp.gmail.com
-  port: process.env.SMTP_PORT, // 465
-  secure: true, // Dùng true cho port 465
-  auth: {
-    user: process.env.SMTP_EMAIL,
+    service: 'gmail',
+    auth: {
+      user: process.env.SMTP_EMAIL,
     pass: process.env.SMTP_PASSWORD,
-  },
+    }
 });
 // === Hàm tạo token (JWT) ===
 function generateToken(id, role) {
@@ -373,50 +371,43 @@ exports.setInitialPassword = async (req, res) => {
         return res.status(500).json({ message: 'Lỗi server khi cập nhật mật khẩu.' });
     }
 };
+// 1. GỬI YÊU CẦU QUÊN MẬT KHẨU
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
-    console.log("👉 Bắt đầu xử lý quên mật khẩu cho:", email); // Log 1
-
     try {
         const user = await User.findOne({ email });
         if (!user) {
-            console.log("❌ Không tìm thấy email"); // Log 2
             return res.status(404).json({ message: 'Email này chưa được đăng ký.' });
         }
 
+        // Tạo mã OTP ngẫu nhiên 6 số
         const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Lưu vào DB (Hết hạn sau 15 phút)
         user.resetPasswordToken = resetToken;
         user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; 
         await user.save();
 
+        // Gửi Email
         const mailOptions = {
-            from: '"Quán Ăn Ngon" <ngo178384@gmail.com>',
+            from: '"Quán Ăn Ngon Support" <no-reply@quananngon.com>',
             to: user.email,
             subject: 'Mã xác thực đổi mật khẩu',
-            text: `Mã OTP của bạn là: ${resetToken}`
+            text: `Mã OTP của bạn là: ${resetToken}. Mã có hiệu lực trong 15 phút.`
         };
 
-        console.log("🚀 Đang gửi mail..."); // Log 3
         await transporter.sendMail(mailOptions);
-        console.log("✅ Gửi mail thành công!"); // Log 4
 
-        res.json({ success: true, message: 'Đã gửi mã OTP vào email!' });
+        res.json({ success: true, message: 'Đã gửi mã OTP vào email. Vui lòng kiểm tra!' });
 
-    } catch (err) {
-    console.error("LỖI GỬI MAIL:", err); // In lỗi ra log để debug
-
-    // SỬA: Kiểm tra xem biến user có tồn tại không trước khi truy cập
-    if (typeof user !== 'undefined' && user) { 
+    } catch (error) {
+        console.error("Lỗi gửi mail:", error);
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
-        await user.save({ validateBeforeSave: false });
+        await user.save();
+        res.status(500).json({ message: 'Lỗi gửi email. Vui lòng thử lại.' });
     }
-
-    // Quan trọng: Trả về lỗi cho client thay vì để server crash
-    return next(new ErrorResponse('Email could not be sent', 500)); 
-}
 };
-
 
 // 2. THAY THẾ TOÀN BỘ HÀM resetPassword CŨ BẰNG HÀM NÀY
 exports.resetPassword = async (req, res) => {
