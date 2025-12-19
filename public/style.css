@@ -2516,3 +2516,67 @@ header .logo,
     cursor: pointer !important;
     text-align: center !important;
 }
+/* =======================================================
+   MAKE-UP ICON MÀU SẮC (CHO GIỐNG ẢNH MẪU)
+   ======================================================= */
+
+/* 1. Tạo khung cho Icon (Hình vuông bo góc) */
+.icon-box {
+    width: 42px !important;       /* Độ rộng */
+    height: 42px !important;      /* Độ cao */
+    border-radius: 12px !important; /* Bo góc mềm mại */
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff !important;    /* Màu icon bên trong là trắng */
+    font-size: 1.2rem !important; /* Kích thước icon */
+    margin-right: 15px !important; /* Khoảng cách với chữ */
+    flex-shrink: 0;               /* Không bị méo khi co màn hình */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* Đổ bóng nhẹ cho icon đẹp hơn */
+}
+
+/* 2. Tô màu riêng cho từng loại Icon */
+
+/* Màu Xanh dương (Bảo mật) */
+.icon-box.security {
+    background: linear-gradient(135deg, #4dabf7, #228be6) !important;
+}
+
+/* Màu Cam (Lịch sử) */
+.icon-box.history {
+    background: linear-gradient(135deg, #ff922b, #fd7e14) !important;
+}
+
+/* Màu Xanh lá (Đơn hàng) */
+.icon-box.status {
+    background: linear-gradient(135deg, #51cf66, #40c057) !important;
+}
+
+/* Màu Đỏ (Đăng xuất) */
+.icon-box.logout {
+    background: linear-gradient(135deg, #ff6b6b, #fa5252) !important;
+}
+
+/* 3. Chỉnh lại chữ Đăng xuất cho đồng bộ màu đỏ */
+.logout-text {
+    color: #fa5252 !important;
+    font-weight: 600 !important;
+}
+
+/* 4. Căn chỉnh lại dòng menu cho cân đối */
+.menu-item-row {
+    padding: 12px 20px !important; /* Khoảng cách thoáng hơn */
+    align-items: center !important;
+}
+
+.menu-item-left {
+    display: flex !important;
+    align-items: center !important;
+    width: 100%;
+}
+
+.menu-item-left span {
+    font-weight: 500;
+    font-size: 1rem;
+    color: #333;
+}
