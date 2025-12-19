@@ -2449,3 +2449,70 @@ header .logo,
     background-color: white;
     color: #ff7043;
 }
+/* =======================================================
+   👇 DÁN ĐOẠN NÀY VÀO CUỐI CÙNG FILE STYLE.CSS 👇
+   (Hai dấu ngoặc nhọn đầu tiên để sửa lỗi cú pháp ở trên)
+   ======================================================= */
+
+/* --- FIX GIAO DIỆN FORM (BẮT BUỘC HIỂN THỊ) --- */
+.collapsible-form {
+   
+    background-color: #fff !important;
+    padding: 15px 20px !important;
+    border-top: 1px solid #eee !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Ép mỗi nhóm nhập liệu thành 1 khối riêng biệt (xuống dòng) */
+.collapsible-form .form-group {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 15px !important;
+    text-align: left !important;
+}
+
+/* Nhãn tiêu đề nằm trên */
+.collapsible-form label {
+    display: block !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: #555 !important;
+    margin-bottom: 8px !important;
+}
+
+/* Ô nhập liệu dài 100% và không bị dính chùm */
+.collapsible-form input {
+    display: block !important;
+    width: 100% !important;
+    padding: 12px 15px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 8px !important;
+    font-size: 1rem !important;
+    background: #fff !important;
+    outline: none !important;
+    box-sizing: border-box !important; /* Quan trọng để không tràn lề */
+    margin-top: 0 !important;
+    height: auto !important;
+}
+
+.collapsible-form input:focus {
+    border-color: #ff7043 !important;
+    box-shadow: 0 0 0 3px rgba(255, 112, 67, 0.1) !important;
+}
+
+/* Nút cập nhật nằm riêng một dòng */
+.btn-save-modern {
+    display: block !important;
+    width: 100% !important;
+    margin-top: 20px !important;
+    padding: 12px !important;
+    background: linear-gradient(135deg, #ff7043, #ff5722) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 30px !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    cursor: pointer !important;
+    text-align: center !important;
+}
