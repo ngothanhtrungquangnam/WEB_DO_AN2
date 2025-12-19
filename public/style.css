@@ -2580,3 +2580,45 @@ header .logo,
     font-size: 1rem;
     color: #333;
 }
+/* === CSS CHO FLASH SALE LƯỚT NGANG === */
+.horizontal-scroll {
+    display: flex;              /* Xếp các món nằm ngang */
+    overflow-x: auto;           /* Cho phép cuộn ngang */
+    gap: 15px;                  /* Khoảng cách giữa các món */
+    padding: 10px 5px;
+    scroll-behavior: smooth;    /* Lướt mượt mà */
+    
+    /* Ẩn thanh cuộn (Scrollbar) để giao diện đẹp hơn */
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* IE and Edge */
+}
+
+.horizontal-scroll::-webkit-scrollbar {
+    display: none;              /* Chrome, Safari, Opera */
+}
+
+/* Định dạng thẻ món ăn bên trong Flash Sale */
+.horizontal-scroll .menu-item {
+    min-width: 160px;           /* Chiều rộng cố định để không bị co lại */
+    max-width: 160px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    flex-shrink: 0;             /* Quan trọng: Ngăn không cho thẻ bị bóp méo */
+    padding-bottom: 10px;
+    overflow: hidden;
+}
+
+.horizontal-scroll .menu-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+
+.horizontal-scroll .menu-item h3 {
+    font-size: 14px;
+    margin: 8px;
+    white-space: nowrap;        /* Tên món không xuống dòng */
+    overflow: hidden;
+    text-overflow: ellipsis;    /* Tên dài quá thì hiện dấu ... */
+}

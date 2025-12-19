@@ -1376,38 +1376,93 @@ window.showAuthModal = function() {
     }
 }
 // ==========================================================
-// 🔥 HÀM RENDER FLASH SALE (BẠN ĐANG THIẾU CÁI NÀY) 🔥
+// 🔥 HÀM RENDER FLASH SALE (PHIÊN BẢN LƯỚT NGANG HOÀN CHỈNH) 🔥
 // ==========================================================
 function renderFlashSale(items) {
-    const container = document.querySelector('.horizontal-scroll');
-    // Nếu trang này không có khung Flash Sale (ví dụ trang Admin) thì dừng
-    if (!container) return; 
+    // 1. Tìm container bằng ID chuẩn mà ta đã sửa ở HTML
+    const container = document.getElementById('flash-sale-container'); 
+    
+    // Nếu không tìm thấy ID mới, thử tìm bằng class cũ (phòng khi HTML chưa cập nhật kịp)
+    if (!container) {
+        const fallbackContainer = document.querySelector('.horizontal-scroll');
+        if (!fallbackContainer) return; // Không có chỗ để vẽ -> Thoát
+        // Nếu tìm thấy class cũ, gán lại để dùng tạm
+        return renderFlashSaleFallback(items, fallbackContainer);
+    }
 
-    // Nếu không có món nào
+    // 2. Xử lý khi không có món Flash Sale
     if (!items || items.length === 0) {
-        container.innerHTML = '<p style="padding:20px; color:#999; text-align:center; min-width: 200px;">Chưa có deal hot hôm nay 🔥</p>';
+        container.innerHTML = `
+            <div style="width: 100%; text-align: center; padding: 20px; color: #888;">
+                <i class="bi bi-emoji-frown"></i> Chưa có deal hot hôm nay.
+            </div>`;
         return;
     }
 
-    container.innerHTML = items.map(item => {
-        // Tạo giá cũ giả vờ (tăng 30% để nhìn hấp dẫn)
+    // 3. Xóa nội dung "Đang tải..."
+    container.innerHTML = '';
+
+    // 4. Tạo HTML cho từng món ăn
+    items.forEach(item => {
+        // Tạo giá cũ giả định (tăng 30%) để hiển thị gạch ngang
         const oldPrice = item.price * 1.3; 
         
+        // Tạo thẻ div cho món ăn
+        const card = document.createElement('div');
+        card.className = 'menu-item'; // Class này sẽ ăn theo CSS lướt ngang
+        
+        // Nội dung thẻ
+        card.innerHTML = `
+            <div style="position: relative;">
+                 <img src="${item.image || 'https://via.placeholder.com/150'}" 
+                      alt="${item.name}" 
+                      onerror="this.src='https://via.placeholder.com/150'">
+                 <span style="position: absolute; top: 0; right: 0; background: #ff4d4d; color: white; padding: 2px 8px; font-size: 10px; font-weight: bold; border-bottom-left-radius: 8px;">
+                    HOT
+                 </span>
+            </div>
+            <h3>${item.name}</h3>
+            <div class="price-box" style="padding: 0 8px;">
+                <span style="color: #ff4d4d; font-weight: bold; font-size: 14px;">
+                    ${item.price.toLocaleString('vi-VN')}đ
+                </span>
+                <br>
+                <span style="text-decoration: line-through; color: #aaa; font-size: 11px;">
+                    ${oldPrice.toLocaleString('vi-VN', {maximumFractionDigits: 0})}đ
+                </span>
+            </div>
+            <button class="btn-add" onclick="addToClientCart('${item._id}')" 
+                    style="width: 90%; margin: 8px auto; display: block; background: linear-gradient(to right, #ff4d4d, #ff6b6b); color: white; border: none; padding: 6px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                <i class="bi bi-cart-plus"></i> Thêm
+            </button>
+        `;
+        
+        // Gắn thẻ vào container
+        container.appendChild(card);
+    });
+}
+
+// Hàm dự phòng (Fallback) nếu bạn chưa kịp sửa HTML
+function renderFlashSaleFallback(items, container) {
+     if (!items || items.length === 0) {
+        container.innerHTML = '<p style="padding:20px; color:#999; text-align:center;">Chưa có deal hot 🔥</p>';
+        return;
+    }
+    container.innerHTML = items.map(item => {
+        const oldPrice = item.price * 1.3;
         return `
-        <div class="mini-card" onclick="addToClientCart('${item._id}')">
+        <div class="mini-card" onclick="addToClientCart('${item._id}')" style="min-width: 140px; margin-right: 10px;">
             <div class="mini-img">
-                <img src="${item.image || 'https://via.placeholder.com/150'}" alt="${item.name}">
+                <img src="${item.image}" alt="${item.name}">
                 <span class="sale-tag">HOT</span>
             </div>
             <div class="mini-info">
-                <h4>${item.name}</h4>
+                <h4 style="font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</h4>
                 <div class="price-box">
                     <span class="new-price">${item.price.toLocaleString('vi-VN')}đ</span>
-                    <span class="old-price">${oldPrice.toLocaleString('vi-VN')}đ</span>
                 </div>
             </div>
-        </div>
-        `;
+        </div>`;
     }).join('');
 }
 // Hàm tính tổng số lượng món để hiện lên chấm đỏ
