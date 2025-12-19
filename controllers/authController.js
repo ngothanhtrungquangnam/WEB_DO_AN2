@@ -403,16 +403,17 @@ exports.forgotPassword = async (req, res) => {
         res.json({ success: true, message: 'Đã gửi mã OTP vào email!' });
 
     } catch (err) {
-    console.log(err); // In lỗi ra để xem
-    
-    // Thêm dòng kiểm tra này: Chỉ reset nếu biến user thực sự tồn tại
-    if (typeof user !== 'undefined' && user) {
+    console.error("LỖI GỬI MAIL:", err); // In lỗi ra log để debug
+
+    // SỬA: Kiểm tra xem biến user có tồn tại không trước khi truy cập
+    if (typeof user !== 'undefined' && user) { 
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
         await user.save({ validateBeforeSave: false });
     }
 
-    return next(new ErrorResponse('Email could not be sent', 500));
+    // Quan trọng: Trả về lỗi cho client thay vì để server crash
+    return next(new ErrorResponse('Email could not be sent', 500)); 
 }
 };
 
