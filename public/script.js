@@ -1,6 +1,7 @@
 // File: public/script.js --- PHIÊN BẢN HOÀN CHỈNH (ĐÃ SỬA LỖI LỌC) ---
 // File: script.js
   // Hàm hiển thị Modal/Form Bắt buộc thiết lập mật khẩu
+  let emailCanKhoiPhuc = "";
 window.showPasswordSetupModal = function(userId, email, token) {
     // 1. Lưu tạm dữ liệu cần thiết
     localStorage.setItem('tempSocialUserId', userId);
@@ -1261,6 +1262,8 @@ window.handleSendOtp = async function() {
         alert("Vui lòng nhập email!");
         return;
     }
+    emailCanKhoiPhuc = email; // Lưu email vào biến toàn cục để dùng cho bước sau
+    console.log("Đã lưu email cần khôi phục:", emailCanKhoiPhuc);
 
     // Hiệu ứng loading & Khóa nút
     let originalText = "Gửi Mã OTP";
@@ -1598,35 +1601,43 @@ window.closeUtilityMenu = function() {
     }
 }
 // ===============================================
-// XỬ LÝ ĐỔI MẬT KHẨU (RESET PASSWORD)
+// XỬ LÝ ĐỔI MẬT KHẨU (RESET PASSWORD) - ĐÃ SỬA
 // ===============================================
 
 // Hàm này được gọi khi bấm nút "Đổi mật khẩu"
 async function handleSubmitReset() {
     console.log("🚀 Đang gửi yêu cầu đổi mật khẩu...");
 
-    // 1. Lấy giá trị từ các ô nhập liệu (Sửa lại ID cho đúng với HTML của bạn)
-    // Giả sử HTML của bạn có các ID là: 'email', 'otpInput', 'newPasswordInput'
-    // Bạn hãy kiểm tra lại file HTML xem ID chính xác là gì nhé!
-    const email = document.getElementById('email')?.value || document.getElementById('resetEmail')?.value;
-    const otp = document.getElementById('otpInput')?.value || document.getElementById('otp')?.value;
-    const newPassword = document.getElementById('newPasswordInput')?.value || document.getElementById('newPassword')?.value;
+    // 1. Lấy OTP và Mật khẩu mới từ giao diện
+    // (Kiểm tra kỹ ID trong HTML của bạn, thường là 'reset-otp' hoặc 'otpInput')
+    const otp = document.getElementById('reset-otp')?.value || document.getElementById('otpInput')?.value;
+    const newPassword = document.getElementById('reset-new-pass')?.value || document.getElementById('newPasswordInput')?.value;
+
+    // 🔥🔥🔥 SỬA ĐOẠN NÀY: Lấy Email từ biến đã lưu ở bước 1 🔥🔥🔥
+    const email = emailCanKhoiPhuc; 
+    // -------------------------------------------------------------
+
+    console.log("Debug Data:", { email, otp, newPassword });
 
     // 2. Kiểm tra dữ liệu đầu vào
-    if (!email || !otp || !newPassword) {
-        alert("Vui lòng nhập đầy đủ Email, Mã OTP và Mật khẩu mới!");
+    if (!email) {
+        alert("⚠️ Lỗi: Không tìm thấy email. Vui lòng tải lại trang và thực hiện lại từ đầu.");
+        return;
+    }
+    if (!otp || !newPassword) {
+        alert("Vui lòng nhập Mã OTP và Mật khẩu mới!");
         return;
     }
 
     try {
-        // 3. Gọi API Reset Password (Backend chúng ta đã kiểm tra là đúng rồi)
+        // 3. Gọi API Reset Password
         const response = await fetch('/api/auth/reset-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                email: email,
+                email: email,       // Gửi email đã lưu
                 otp: otp,
                 newPassword: newPassword
             })
@@ -1637,7 +1648,7 @@ async function handleSubmitReset() {
         // 4. Xử lý kết quả trả về
         if (data.success) {
             alert("✅ Thành công! Mật khẩu đã được thay đổi. Hãy đăng nhập lại.");
-            window.location.href = '/login'; // Chuyển về trang đăng nhập
+            window.location.href = '/login.html'; // Chuyển về trang đăng nhập
         } else {
             alert("❌ Thất bại: " + (data.message || "Mã OTP sai hoặc hết hạn"));
         }
@@ -1648,5 +1659,5 @@ async function handleSubmitReset() {
     }
 }
 
-// 🔥 QUAN TRỌNG: Gắn hàm này vào window để HTML có thể nhìn thấy
+// Gắn hàm vào window
 window.handleSubmitReset = handleSubmitReset;
