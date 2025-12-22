@@ -291,81 +291,60 @@ exports.setInitialPassword = async (req, res) => {
         return res.status(500).json({ message: 'Lỗi server khi cập nhật mật khẩu.' });
     }
 };
-// ==========================================
-// 8. FORGOT PASSWORD (ĐÃ SỬA LỖI TIMEOUT - CỔNG 465)
+/// ==========================================
+// 8. FORGOT PASSWORD (DÙNG GOOGLE SCRIPT - KHÔNG BAO GIỜ BỊ CHẶN)
 // ==========================================
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
-    let user = null;
 
-    // 1. Kiểm tra biến môi trường
-    if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
-        return res.status(500).json({ message: "Lỗi Server: Chưa cấu hình Email/Pass trong .env" });
-    }
-
-    // 2. Cấu hình Transporter (Cổng 465 - SSL - Chống Timeout)
-    const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,            // 👈 Cổng 465 là cổng SSL
-        secure: true,         // 👈 Bắt buộc TRUE
-        auth: {
-            user: process.env.SMTP_EMAIL,
-            pass: process.env.SMTP_PASSWORD,
-        },
-        tls: {
-            rejectUnauthorized: false // Bỏ qua lỗi chứng chỉ nếu có
-        }
-    });
+    // 👇 ĐƯỜNG DẪN BẠN VỪA GỬI (Đã điền sẵn)
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyrj0Gf48ft46_C4a5_Oq13ejLaYEQkXiR0PQ7XbnQ7-7v0BGqnL4IxNcdZnempJ8sW/exec';
 
     try {
-        // 3. Tìm user và tạo Token
-        user = await User.findOne({ email });
+        const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: 'Email này chưa được đăng ký.' });
         }
 
+        // Tạo OTP và lưu vào DB
         const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
-
         user.resetPasswordToken = resetToken;
         user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 phút
-
         await user.save({ validateBeforeSave: false });
 
-        // 4. Gửi Mail
-        console.log("📧 Đang gửi mail tới:", user.email);
-        
-        const mailOptions = {
-            from: '"Quán Ăn Ngon Support" <' + process.env.SMTP_EMAIL + '>',
-            to: user.email,
-            subject: 'Mã xác thực đổi mật khẩu',
+        console.log("📧 Đang gửi lệnh sang Google Script...");
+
+        // === GỬI QUA HTTP (AXIOS) ===
+        // Gửi dữ liệu sang Script để nó tự gửi mail
+        await axios.post(GOOGLE_SCRIPT_URL, {
+            email: user.email,
+            subject: 'Mã xác thực đổi mật khẩu - Quán Ăn Ngon',
             html: `
-                <h3>Yêu cầu đổi mật khẩu</h3>
-                <p>Mã OTP của bạn là: <b style="font-size: 20px; color: red;">${resetToken}</b></p>
-                <p>Mã có hiệu lực trong 15 phút.</p>
+                <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                    <h2 style="color: #d35400;">Yêu cầu đổi mật khẩu</h2>
+                    <p>Xin chào,</p>
+                    <p>Bạn vừa yêu cầu đổi mật khẩu tại hệ thống Quán Ăn Ngon.</p>
+                    <p>Mã OTP xác thực của bạn là:</p>
+                    <h1 style="color: #e74c3c; letter-spacing: 5px;">${resetToken}</h1>
+                    <p style="color: #7f8c8d;">Mã này có hiệu lực trong 15 phút. Tuyệt đối không chia sẻ mã này cho ai.</p>
+                </div>
             `
-        };
+        });
 
-        await transporter.sendMail(mailOptions);
-        console.log("✅ Gửi mail thành công!");
-
-        res.json({ success: true, message: 'Đã gửi mã OTP vào email. Vui lòng kiểm tra!' });
+        console.log("✅ Đã gửi mail thành công!");
+        res.json({ success: true, message: 'Đã gửi mã OTP. Vui lòng kiểm tra email!' });
 
     } catch (error) {
-        console.error("🔥 Lỗi gửi mail:", error);
-
-        // Hoàn tác nếu lỗi
+        console.error("🔥 Lỗi gửi mail:", error.message);
+        // Nếu lỗi thì xóa token để người dùng thử lại
         if (user) {
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save({ validateBeforeSave: false });
         }
-
-        res.status(500).json({ message: 'Lỗi gửi email. Vui lòng thử lại sau.' });
+        res.status(500).json({ message: 'Lỗi hệ thống mail: ' + error.message });
     }
 };
-// File: controllers/authController.js
-
-// File: controllers/authController.js
 
 exports.resetPassword = async (req, res) => {
     const { email, otp, newPassword } = req.body;
