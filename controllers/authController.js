@@ -310,17 +310,21 @@ exports.forgotPassword = async (req, res) => {
         return res.status(500).json({ message: "Lỗi Server: Chưa cấu hình Email/Pass trong .env" });
     }
 
-    // === 1. CREATE TRANSPORTER INSIDE THE FUNCTION ===
-    // This ensures .env is loaded before we try to use the credentials
+// === CẤU HÌNH KHẮC PHỤC LỖI TIMEOUT TRÊN RENDER ===
     const transporter = nodemailer.createTransport({
-        service: 'gmail',  // 👈 QUAN TRỌNG NHẤT
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false, // true for 465, false for other ports
         auth: {
             user: process.env.SMTP_EMAIL,
             pass: process.env.SMTP_PASSWORD,
-        }
-        
+        },
+        tls: {
+            rejectUnauthorized: false // Bỏ qua lỗi chứng chỉ bảo mật
+        },
+        // 🔥 DÒNG QUAN TRỌNG NHẤT ĐỂ SỬA LỖI TIMEOUT:
+        family: 4 // Ép buộc dùng IPv4 (Tránh lỗi ETIMEDOUT do IPv6 trên Render)
     });
-
     try {
         user = await User.findOne({ email });
         if (!user) {
