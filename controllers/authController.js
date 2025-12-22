@@ -291,42 +291,34 @@ exports.setInitialPassword = async (req, res) => {
         return res.status(500).json({ message: 'Lỗi server khi cập nhật mật khẩu.' });
     }
 };
-
 // ==========================================
-// 8. FORGOT PASSWORD (FIXED)
+// 8. FORGOT PASSWORD (ĐÃ SỬA LỖI TIMEOUT - CỔNG 465)
 // ==========================================
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
-    let user = null; 
+    let user = null;
 
-    // === DEBUG LOGGING: CHECK ENVIRONMENT VARIABLES ===
-    console.log("-----------------------------------------");
-    console.log("🔍 CHECKING ENV VARIABLES INSIDE FUNCTION:");
-    console.log("   - SMTP_EMAIL:", process.env.SMTP_EMAIL || "❌ MISSING");
-    console.log("   - SMTP_PASSWORD:", process.env.SMTP_PASSWORD ? "✅ PRESENT" : "❌ MISSING");
-    console.log("-----------------------------------------");
-
+    // 1. Kiểm tra biến môi trường
     if (!process.env.SMTP_EMAIL || !process.env.SMTP_PASSWORD) {
         return res.status(500).json({ message: "Lỗi Server: Chưa cấu hình Email/Pass trong .env" });
     }
 
-// === CẤU HÌNH KHẮC PHỤC LỖI TIMEOUT TRÊN RENDER ===
- // === CẤU HÌNH GỬI MAIL QUA CỔNG 465 (SSL) ===
-    // Khắc phục lỗi Timeout khi cổng 587 bị chặn
+    // 2. Cấu hình Transporter (Cổng 465 - SSL - Chống Timeout)
     const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
-        port: 465,            // 👈 Đổi sang cổng 465
-        secure: true,         // 👈 Bắt buộc TRUE với cổng 465
+        port: 465,            // 👈 Cổng 465 là cổng SSL
+        secure: true,         // 👈 Bắt buộc TRUE
         auth: {
             user: process.env.SMTP_EMAIL,
             pass: process.env.SMTP_PASSWORD,
         },
         tls: {
-            // Không từ chối chứng chỉ tự ký (giúp tránh lỗi SSL trên Render)
-            rejectUnauthorized: false 
+            rejectUnauthorized: false // Bỏ qua lỗi chứng chỉ nếu có
         }
     });
+
     try {
+        // 3. Tìm user và tạo Token
         user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: 'Email này chưa được đăng ký.' });
@@ -335,12 +327,13 @@ exports.forgotPassword = async (req, res) => {
         const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
 
         user.resetPasswordToken = resetToken;
-        user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; 
-        
+        user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 phút
+
         await user.save({ validateBeforeSave: false });
 
-        console.log("📧 Sending email to:", user.email);
-
+        // 4. Gửi Mail
+        console.log("📧 Đang gửi mail tới:", user.email);
+        
         const mailOptions = {
             from: '"Quán Ăn Ngon Support" <' + process.env.SMTP_EMAIL + '>',
             to: user.email,
@@ -353,20 +346,21 @@ exports.forgotPassword = async (req, res) => {
         };
 
         await transporter.sendMail(mailOptions);
-        console.log("✅ Email sent successfully!");
+        console.log("✅ Gửi mail thành công!");
 
         res.json({ success: true, message: 'Đã gửi mã OTP vào email. Vui lòng kiểm tra!' });
 
     } catch (error) {
         console.error("🔥 Lỗi gửi mail:", error);
-        
+
+        // Hoàn tác nếu lỗi
         if (user) {
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save({ validateBeforeSave: false });
         }
-        
-        res.status(500).json({ message: 'Lỗi gửi email. Vui lòng thử lại.' });
+
+        res.status(500).json({ message: 'Lỗi gửi email. Vui lòng thử lại sau.' });
     }
 };
 // File: controllers/authController.js
