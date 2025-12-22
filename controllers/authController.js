@@ -313,16 +313,12 @@ exports.forgotPassword = async (req, res) => {
     // === 1. CREATE TRANSPORTER INSIDE THE FUNCTION ===
     // This ensures .env is loaded before we try to use the credentials
     const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-       port: 587,        // 👈 ĐỔI THÀNH 587
-        secure: false,    
+        service: 'gmail',  // 👈 QUAN TRỌNG NHẤT
         auth: {
             user: process.env.SMTP_EMAIL,
             pass: process.env.SMTP_PASSWORD,
-        },
-        tls: {
-            rejectUnauthorized: false
         }
+        
     });
 
     try {
