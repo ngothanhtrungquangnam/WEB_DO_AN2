@@ -1242,35 +1242,42 @@ window.backToStep1 = function() {
     document.getElementById('forgot-step-2').style.display = 'none';
 }
 
-// 4. Xử lý Gửi OTP (Gán vào window để sửa lỗi ReferenceError)
+// 4. Xử lý Gửi OTP (ĐÃ TỐI ƯU CHẶN CLICK KÉP)
 window.handleSendOtp = async function() {
-    console.log("Bắt đầu gửi OTP..."); // Log kiểm tra
+    console.log("Bắt đầu gửi OTP..."); 
     
+    // Tìm nút bấm
+    const btn = document.querySelector('#forgot-step-1 button');
+    
+    // 🛑 CHẶN NGAY LẬP TỨC: Nếu nút đang bị khóa thì không chạy code nữa
+    if (btn && btn.disabled) {
+        return; 
+    }
+
     const emailInput = document.getElementById('forgot-email');
     const email = emailInput.value.trim();
-    
-    // Tìm nút bấm để làm hiệu ứng loading (nếu có)
-    const btn = document.querySelector('#forgot-step-1 button');
     
     if (!email) {
         alert("Vui lòng nhập email!");
         return;
     }
 
-    // Hiệu ứng loading
+    // Hiệu ứng loading & Khóa nút
     let originalText = "Gửi Mã OTP";
     if (btn) {
         originalText = btn.textContent;
-        btn.textContent = "Đang gửi...";
-        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Đang gửi...'; // Thêm icon xoay cho đẹp (nếu có bootstrap icon)
+        btn.disabled = true; // Khóa nút
     }
 
     try {
-      const res = await fetch('https://web-do-an2.onrender.com/api/auth/forgot-password', {
+        // Gọi API (Lưu ý: Port 3000 phải khớp với server của bạn)
+        const res = await fetch('/api/auth/forgot-password', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ email })
         });
+        
         const data = await res.json();
 
         if (res.ok) {
@@ -1285,38 +1292,43 @@ window.handleSendOtp = async function() {
         console.error(e);
         alert("❌ Lỗi kết nối Server");
     } finally {
-        // Trả lại nút bấm
+        // Trả lại trạng thái nút (dù thành công hay thất bại)
         if (btn) {
-            btn.textContent = originalText;
-            btn.disabled = false;
+            btn.innerHTML = originalText;
+            btn.disabled = false; // Mở khóa nút
         }
     }
 }
+// File: public/script.js
 
-// 5. Xử lý Đổi Mật Khẩu
 window.handleSubmitReset = async function() {
     const email = document.getElementById('forgot-email').value.trim();
-    const otp = document.getElementById('reset-otp').value.trim();
+    const otp = document.getElementById('reset-otp').value.trim(); // Mã OTP bạn nhập
     const newPassword = document.getElementById('reset-new-pass').value;
 
     if (!otp || !newPassword) return alert("Vui lòng nhập đủ Mã OTP và Mật khẩu mới!");
 
     try {
-       const res = await fetch('https://web-do-an2.onrender.com/api/auth/reset-password', {
+        // 🔥 SỬA ĐƯỜNG DẪN TẠI ĐÂY 🔥
+        // Cũ (Sai): .../api/auth/forgot-password
+        // Mới (Đúng): .../api/auth/reset-password
+        const res = await fetch('/api/auth/reset-password', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ email, otp, newPassword })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp, newPassword }) // Gửi cả OTP và Pass mới
         });
+        
         const data = await res.json();
 
         if (res.ok) {
             alert("🎉 Đổi mật khẩu thành công! Hãy đăng nhập lại.");
-            window.closeForgotModal();
-            
+            // Đóng modal, chuyển trang...
+            if(typeof window.closeForgotModal === 'function') window.closeForgotModal();
             // Mở lại modal đăng nhập
             const authModal = document.getElementById('auth-modal');
             if (authModal) authModal.style.display = 'flex';
         } else {
+            // Lúc này nếu sai OTP, nó sẽ báo lỗi ở đây
             alert("⚠️ " + (data.message || "Mã OTP không đúng"));
         }
     } catch (e) {
