@@ -2622,3 +2622,33 @@ header .logo,
     overflow: hidden;
     text-overflow: ellipsis;    /* Tên dài quá thì hiện dấu ... */
 }
+/* --- FIX THANH CUỘN CHO MENU GỌI THÊM --- */
+
+/* 1. Định dạng khung chứa danh sách món trong Modal */
+/* Bạn có thể cần kiểm tra xem thẻ div chứa danh sách món có class/id là gì. 
+   Thường là .modal-body hoặc một div riêng. Đoạn dưới đây dùng cho .modal-body chung */
+.modal-body, 
+#list-mon-an-goi-them { /* Giả sử bạn đặt ID này cho danh sách */
+    max-height: 60vh; /* Giới hạn chiều cao: 60% màn hình */
+    overflow-y: auto; /* Tự động hiện thanh cuộn dọc khi danh sách dài */
+    
+    /* Tùy chỉnh cho đẹp */
+    padding-bottom: 20px;
+    scrollbar-width: thin; /* Cho Firefox */
+}
+
+/* 2. Tùy chỉnh thanh cuộn (Chrome/Safari/Edge) */
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}

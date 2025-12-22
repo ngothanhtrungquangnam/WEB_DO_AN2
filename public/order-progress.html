@@ -60,6 +60,34 @@
             .order-header strong { font-size: 1.4rem; }
             .timeline-container { background: white; margin: -15px 15px 15px 15px; padding: 20px 10px; border-radius: 12px; z-index: 10; position: relative; }
         }
+        /* --- SỬA LẠI ĐOẠN NÀY TRONG PHẦN STYLE CỦA FILE order-progress.html --- */
+
+/* 1. Đảm bảo nội dung Modal co giãn đúng */
+.modal-content {
+    /* Các thuộc tính cũ giữ nguyên */
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh; /* Chiều cao tối đa của popup là 85% màn hình */
+}
+
+/* 2. Ép danh sách món ăn phải nằm gọn và tự cuộn */
+#menu-list-container {
+    flex: 1;           /* Lệnh quan trọng: Chiếm hết khoảng trống còn lại */
+    overflow-y: auto;  /* Bắt buộc hiện thanh cuộn khi danh sách dài */
+    min-height: 0;     /* Fix lỗi cuộn trên Firefox/một số trình duyệt */
+    padding: 10px;
+    background-color: #fff;
+    border-top: 1px solid #eee; /* Đường kẻ nhẹ ngăn cách với tiêu đề */
+}
+
+/* 3. Làm đẹp thanh cuộn (Scrollbar) */
+#menu-list-container::-webkit-scrollbar {
+    width: 6px;
+}
+#menu-list-container::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 4px;
+}
     </style>
 </head>
 <body>
@@ -142,23 +170,32 @@
             return `<span class="payment-status-pending">⏳ Chờ: ${formatCurrency(remain)}</span><br><button onclick="showTransferQR('${order._id}', ${remain})" style="color:#007bff; border:none; background:none; text-decoration:underline; cursor:pointer;">[📲 Lấy mã QR]</button>`;
         }
 
+    // 1. SỬA HÀM HIỂN THỊ (Truyền status vào các nút bấm)
         async function loadActiveOrders() {
             const container = document.getElementById('order-list-container');
             if (!userInfo?.token) { container.innerHTML = '<p style="text-align:center;color:red">Vui lòng đăng nhập!</p>'; return; }
             try {
                 const res = await fetch(`/api/donhang/my-active?userId=${userInfo.userId || userInfo._id}`, { headers: { 'Authorization': `Bearer ${userInfo.token}` } });
                 const data = await res.json();
-                const active = data.filter(o => o.status === 'Mới' || o.status === 'Đang xử lý');
+                const active = data.filter(o => o.status === 'Mới' || o.status === 'Đang xử lý'); // Chỉ lấy đơn chưa hoàn thành hẳn
+                
                 if (!active.length) { container.innerHTML = '<p style="text-align:center;padding:20px">Không có đơn hàng nào đang xử lý.</p>'; return; }
+                
                 container.innerHTML = '';
                 active.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(order => {
                     const card = document.createElement('div');
                     card.className = 'order-card';
+                    
+                    // --- LOGIC KIỂM TRA TRẠNG THÁI ĐỂ ẨN/HIỆN NÚT ---
+                    // Nếu đang xử lý -> Disable nút
+                    const isLocked = (order.status === 'Đang xử lý' || order.status === 'Hoàn thành');
+                    const disabledAttr = isLocked ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : '';
+                    
                     card.innerHTML = `
                         <div class="order-header">
                             <div style="flex:1">
                                 <strong>Bàn: ${order.banId?.soBan || 'Mang về'}</strong>
-                                <button class="btn-switch-table" onclick="goiApiChuyenBan('${order._id}', '${order.banId?.soBan || ''}')">🔄 Đổi bàn</button>
+                                <button class="btn-switch-table" ${disabledAttr} onclick="goiApiChuyenBan('${order._id}', '${order.banId?.soBan || ''}', '${order.status}')">🔄 Đổi bàn</button>
                                 <div style="font-size:0.75rem; opacity:0.7">ID: #${order._id.substring(0,8)}</div>
                             </div>
                             <div style="text-align:right; font-size:0.8rem">${new Date(order.createdAt).toLocaleString('vi-VN')}</div>
@@ -170,13 +207,16 @@
                                 <div class="order-item">
                                     <div style="flex:1"><span>${item.itemId?.name || 'Món đã xóa'}</span><br><small>${formatCurrency(item.itemId?.price * item.quantity)}</small></div>
                                     <div class="item-controls">
-                                        <button class="btn-action btn-dec" onclick="goiApiCapNhatMon('${order._id}', '${item.itemId?._id}', ${item.quantity - 1})">-</button>
+                                        <button class="btn-action btn-dec" ${disabledAttr} onclick="goiApiCapNhatMon('${order._id}', '${item.itemId?._id}', ${item.quantity - 1}, '${order.status}')">-</button>
                                         <b style="width:20px;text-align:center">${item.quantity}</b>
-                                        <button class="btn-action btn-inc" onclick="goiApiCapNhatMon('${order._id}', '${item.itemId?._id}', ${item.quantity + 1})">+</button>
-                                        <button class="btn-action btn-del" onclick="goiApiCapNhatMon('${order._id}', '${item.itemId?._id}', 0)">🗑️</button>
+                                        <button class="btn-action btn-inc" ${disabledAttr} onclick="goiApiCapNhatMon('${order._id}', '${item.itemId?._id}', ${item.quantity + 1}, '${order.status}')">+</button>
+                                        <button class="btn-action btn-del" ${disabledAttr} onclick="goiApiCapNhatMon('${order._id}', '${item.itemId?._id}', 0, '${order.status}')">🗑️</button>
                                     </div>
                                 </div>`).join('')}
-                            <button class="btn-add-more" onclick="moModalGoiThem('${order._id}')"><i class="bi bi-plus-circle"></i> Gọi thêm món</button>
+                            
+                            <button class="btn-add-more" ${disabledAttr} onclick="moModalGoiThem('${order._id}', '${order.status}')">
+                                <i class="bi bi-plus-circle"></i> Gọi thêm món
+                            </button>
                         </div>
                         <div class="order-footer">Tổng: <span style="color:red">${formatCurrency(order.totalPrice)}</span></div>`;
                     container.appendChild(card);
@@ -184,7 +224,14 @@
             } catch (e) { console.error(e); }
         }
 
-        async function goiApiCapNhatMon(orderId, itemId, quantity) {
+        // 2. SỬA HÀM CẬP NHẬT MÓN (Thêm tham số status)
+        async function goiApiCapNhatMon(orderId, itemId, quantity, status) {
+            // 🔥 CHẶN NGAY LẬP TỨC NẾU TRẠNG THÁI KHÔNG PHẢI LÀ 'MỚI'
+            if (status === 'Đang xử lý' || status === 'Hoàn thành') {
+                alert("⛔ Đơn hàng đã được nhà bếp tiếp nhận. Không thể thêm/xóa món lúc này!");
+                return;
+            }
+
             if (quantity === 0 && !confirm("Xóa món này?")) return;
             try {
                 const res = await fetch('/api/donhang/update-item', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, itemId, quantity }) });
@@ -192,20 +239,17 @@
             } catch (e) { alert("Lỗi kết nối!"); }
         }
 
-        async function goiApiChuyenBan(orderId, oldTable) {
-            const newTable = prompt(`Đơn đang ở bàn ${oldTable}. Nhập số bàn mới:`);
-            if (!newTable) return;
-            try {
-                const res = await fetch('/api/donhang/switch-table', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, newTableId: newTable }) });
-                const data = await res.json();
-                alert(data.message); if (data.success) loadActiveOrders();
-            } catch (e) { alert("Lỗi kết nối!"); }
-        }
+        // 3. SỬA HÀM MỞ MENU GỌI THÊM (Thêm tham số status)
+        async function moModalGoiThem(orderId, status) {
+            // 🔥 CHẶN KHÔNG CHO MỞ MENU NẾU ĐANG XỬ LÝ
+            if (status === 'Đang xử lý' || status === 'Hoàn thành') {
+                alert("⛔ Đơn hàng đang được chế biến. Vui lòng tạo đơn mới nếu muốn gọi thêm!");
+                return;
+            }
 
-        async function moModalGoiThem(orderId) {
             currentTargetOrderId = orderId;
             const modal = document.getElementById('menuModal');
-            modal.style.display = 'block';
+            modal.style.display = 'flex'; // Dùng flex để canh giữa đẹp hơn
             document.getElementById('menu-loading').style.display = 'block';
             try {
                 const res = await fetch('/api/monan');
@@ -219,15 +263,42 @@
                     </div>`).join('');
             } catch (e) { alert("Lỗi tải menu!"); }
         }
-
+        
+        // Hàm chọn món gọi thêm (Logic cũ vẫn ổn vì đã chặn ở bước mở modal, nhưng thêm check cho chắc)
         async function chonMonGoiThem(foodId) {
+             // Lấy lại đơn hàng hiện tại để check status lần cuối (cho an toàn)
+             // Nhưng để nhanh gọn, ta tin tưởng vào việc đã chặn ở bước mở Modal.
             const res = await fetch(`/api/donhang/details/${currentTargetOrderId}`);
             const order = await res.json();
+            
+            // Check status lần nữa (đề phòng mở menu xong thì bếp bấm nhận đơn)
+            if(order.status === 'Đang xử lý') {
+                 alert("Bếp vừa nhận đơn! Không thể thêm món.");
+                 dongModalMenu();
+                 loadActiveOrders();
+                 return;
+            }
+
             const exist = order.items.find(i => (i.itemId._id || i.itemId) === foodId);
-            await goiApiCapNhatMon(currentTargetOrderId, foodId, exist ? exist.quantity + 1 : 1);
+            // Gọi api cập nhật (truyền status 'Mới' giả định vì đã check ở trên)
+            await goiApiCapNhatMon(currentTargetOrderId, foodId, exist ? exist.quantity + 1 : 1, 'Mới');
             dongModalMenu();
         }
-
+        
+        // Cập nhật hàm chuyển bàn để chặn luôn
+        async function goiApiChuyenBan(orderId, oldTable, status) {
+             if (status === 'Đang xử lý' || status === 'Hoàn thành') {
+                alert("⛔ Đơn đang chế biến, không thể đổi bàn!");
+                return;
+            }
+            const newTable = prompt(`Đơn đang ở bàn ${oldTable}. Nhập số bàn mới:`);
+            if (!newTable) return;
+            try {
+                const res = await fetch('/api/donhang/switch-table', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, newTableId: newTable }) });
+                const data = await res.json();
+                alert(data.message); if (data.success) loadActiveOrders();
+            } catch (e) { alert("Lỗi kết nối!"); }
+        }
         function dongModalMenu() { document.getElementById('menuModal').style.display = 'none'; }
 
         async function showTransferQR(orderId, amount) {

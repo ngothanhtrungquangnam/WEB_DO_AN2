@@ -530,6 +530,11 @@ const response = await fetch('https://web-do-an2.onrender.com/api/mon-an');
 // CÁC HÀM TOÀN CỤC (để onclick có thể gọi)
 // ==========================================================
 window.removeItemFromClientCart = function(index) {
+    const currentOrder = JSON.parse(localStorage.getItem("currentOrderSession")); 
+    if (currentOrder && (currentOrder.status === 'Đang xử lý' || currentOrder.status === 'Hoàn thành')) {
+        alert("⛔ Đơn hàng đang được chế biến, không thể xóa món!");
+        return;
+    }
     let cart = JSON.parse(localStorage.getItem("clientCart")) || [];
     cart.splice(index, 1);
     localStorage.setItem("clientCart", JSON.stringify(cart));
@@ -712,6 +717,12 @@ window.editMenuItem = function(id, name, price, image, category) {
 function addToClientCart(id) {
     const userInfo = JSON.parse(localStorage.getItem("userInfo"));
     // Kiểm tra đăng nhập
+    const currentOrder = JSON.parse(localStorage.getItem("currentOrderSession")); 
+    
+    if (currentOrder && (currentOrder.status === 'Đang xử lý' || currentOrder.status === 'Hoàn thành')) {
+        alert("⛔ Đơn hàng đã được nhà bếp tiếp nhận. Vui lòng gọi nhân viên nếu muốn gọi thêm!");
+        return; // Dừng lại ngay, không cho thêm
+    }
     if (!userInfo || userInfo.role !== "user") {
         showToast("⚠️ Vui lòng đăng nhập tài khoản khách hàng trước khi đặt món!");
         // Nếu trên mobile, có thể mở modal đăng nhập luôn cho tiện
