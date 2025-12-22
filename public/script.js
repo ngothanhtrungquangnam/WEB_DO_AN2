@@ -1272,7 +1272,7 @@ window.handleSendOtp = async function() {
 
     try {
         // Gọi API (Lưu ý: Port 3000 phải khớp với server của bạn)
-        const res = await fetch('/api/auth/forgot-password', {
+       const res = await fetch('https://web-do-an2.onrender.com/api/auth/forgot-password', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ email })
@@ -1301,59 +1301,6 @@ window.handleSendOtp = async function() {
 }
 // File: public/script.js
 
-window.handleSubmitReset = async function() {
-    const email = document.getElementById('forgot-email').value.trim();
-    const otp = document.getElementById('reset-otp').value.trim(); // Mã OTP bạn nhập
-    const newPassword = document.getElementById('reset-new-pass').value;
-
-    if (!otp || !newPassword) return alert("Vui lòng nhập đủ Mã OTP và Mật khẩu mới!");
-
-    try {
-        // 🔥 SỬA ĐƯỜNG DẪN TẠI ĐÂY 🔥
-        // Cũ (Sai): .../api/auth/forgot-password
-        // Mới (Đúng): .../api/auth/reset-password
-        const res = await fetch('/api/auth/reset-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, otp, newPassword }) // Gửi cả OTP và Pass mới
-        });
-        
-        const data = await res.json();
-
-        if (res.ok) {
-            alert("🎉 Đổi mật khẩu thành công! Hãy đăng nhập lại.");
-            // Đóng modal, chuyển trang...
-            if(typeof window.closeForgotModal === 'function') window.closeForgotModal();
-            // Mở lại modal đăng nhập
-            const authModal = document.getElementById('auth-modal');
-            if (authModal) authModal.style.display = 'flex';
-        } else {
-            // Lúc này nếu sai OTP, nó sẽ báo lỗi ở đây
-            alert("⚠️ " + (data.message || "Mã OTP không đúng"));
-        }
-    } catch (e) {
-        console.error(e);
-        alert("❌ Lỗi Server");
-    }
-}
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Tìm nút đổi màu (Nó sẽ tự tìm thấy dù bạn đang ở trang Admin hay User)
-    const themeToggleBtn = document.getElementById('theme-toggle');
-    const body = document.body;
-
-    // Nếu trang hiện tại không có nút này (ví dụ trang login) thì không làm gì cả để tránh lỗi
-    if (!themeToggleBtn) return;
-
-    // 2. Kiểm tra bộ nhớ xem khách từng chọn Dark Mode chưa
-    const currentTheme = localStorage.getItem('theme');
-    
-    if (currentTheme === 'dark') {
-        body.classList.add('dark-mode');
-        themeToggleBtn.innerHTML = '☀️'; // Đổi thành mặt trời
-    }
-
-
-});
 // JS chạy đồng hồ đếm ngược giả lập
 setInterval(() => {
     const timerDisplay = document.querySelector('.countdown-timer');
