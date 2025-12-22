@@ -1597,3 +1597,56 @@ window.closeUtilityMenu = function() {
         document.body.style.overflow = ''; // Mở lại cuộn trang
     }
 }
+// ===============================================
+// XỬ LÝ ĐỔI MẬT KHẨU (RESET PASSWORD)
+// ===============================================
+
+// Hàm này được gọi khi bấm nút "Đổi mật khẩu"
+async function handleSubmitReset() {
+    console.log("🚀 Đang gửi yêu cầu đổi mật khẩu...");
+
+    // 1. Lấy giá trị từ các ô nhập liệu (Sửa lại ID cho đúng với HTML của bạn)
+    // Giả sử HTML của bạn có các ID là: 'email', 'otpInput', 'newPasswordInput'
+    // Bạn hãy kiểm tra lại file HTML xem ID chính xác là gì nhé!
+    const email = document.getElementById('email')?.value || document.getElementById('resetEmail')?.value;
+    const otp = document.getElementById('otpInput')?.value || document.getElementById('otp')?.value;
+    const newPassword = document.getElementById('newPasswordInput')?.value || document.getElementById('newPassword')?.value;
+
+    // 2. Kiểm tra dữ liệu đầu vào
+    if (!email || !otp || !newPassword) {
+        alert("Vui lòng nhập đầy đủ Email, Mã OTP và Mật khẩu mới!");
+        return;
+    }
+
+    try {
+        // 3. Gọi API Reset Password (Backend chúng ta đã kiểm tra là đúng rồi)
+        const response = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                otp: otp,
+                newPassword: newPassword
+            })
+        });
+
+        const data = await response.json();
+
+        // 4. Xử lý kết quả trả về
+        if (data.success) {
+            alert("✅ Thành công! Mật khẩu đã được thay đổi. Hãy đăng nhập lại.");
+            window.location.href = '/login'; // Chuyển về trang đăng nhập
+        } else {
+            alert("❌ Thất bại: " + (data.message || "Mã OTP sai hoặc hết hạn"));
+        }
+
+    } catch (error) {
+        console.error("Lỗi:", error);
+        alert("🔥 Lỗi kết nối Server. Vui lòng thử lại.");
+    }
+}
+
+// 🔥 QUAN TRỌNG: Gắn hàm này vào window để HTML có thể nhìn thấy
+window.handleSubmitReset = handleSubmitReset;
