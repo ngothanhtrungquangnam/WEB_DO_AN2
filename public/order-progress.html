@@ -225,20 +225,43 @@
         }
 
         // 2. SỬA HÀM CẬP NHẬT MÓN (Thêm tham số status)
-        async function goiApiCapNhatMon(orderId, itemId, quantity, status) {
-            // 🔥 CHẶN NGAY LẬP TỨC NẾU TRẠNG THÁI KHÔNG PHẢI LÀ 'MỚI'
-            if (status === 'Đang xử lý' || status === 'Hoàn thành') {
-                alert("⛔ Đơn hàng đã được nhà bếp tiếp nhận. Không thể thêm/xóa món lúc này!");
-                return;
-            }
+       // --- HÀM CẬP NHẬT & XÓA MÓN (ĐÃ CÓ ĐIỀU KIỆN CHẶN) ---
+async function goiApiCapNhatMon(orderId, itemId, quantity, status) {
+    
+    // 🔥 1. KIỂM TRA ĐIỀU KIỆN CHẶN (QUAN TRỌNG)
+    // Nếu trạng thái là "Đang xử lý" (Admin đã duyệt) hoặc "Hoàn thành"
+    // Thì CHẶN LUÔN, không cho xóa hay sửa gì cả.
+    if (status === 'Đang xử lý' || status === 'Hoàn thành') {
+        alert("⛔ Đơn hàng đã được nhà bếp tiếp nhận xử lý. Bạn không thể xóa món này được nữa!");
+        return; // Dừng lại ngay lập tức
+    }
 
-            if (quantity === 0 && !confirm("Xóa món này?")) return;
-            try {
-                const res = await fetch('/api/donhang/update-item', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId, itemId, quantity }) });
-                if ((await res.json()).success) { loadActiveOrders(); }
-            } catch (e) { alert("Lỗi kết nối!"); }
+    // 🔥 2. LOGIC XÓA (Khi quantity = 0)
+    if (quantity === 0) {
+        if (!confirm("Bạn có chắc muốn XÓA món này khỏi đơn không?")) {
+            return; // Nếu khách bấm Hủy thì không làm gì
         }
+    }
 
+    // 🔥 3. GỌI API (Chỉ chạy xuống đây nếu chưa bị chặn)
+    try {
+        const res = await fetch('/api/donhang/update-item', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ orderId, itemId, quantity }) 
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) { 
+            loadActiveOrders(); // Tải lại danh sách
+        } else {
+            alert(data.message || "Lỗi cập nhật!");
+        }
+    } catch (e) { 
+        alert("Lỗi kết nối Server!"); 
+    }
+}
         // 3. SỬA HÀM MỞ MENU GỌI THÊM (Thêm tham số status)
         async function moModalGoiThem(orderId, status) {
             // 🔥 CHẶN KHÔNG CHO MỞ MENU NẾU ĐANG XỬ LÝ
