@@ -311,19 +311,20 @@ exports.forgotPassword = async (req, res) => {
     }
 
 // === CẤU HÌNH KHẮC PHỤC LỖI TIMEOUT TRÊN RENDER ===
+ // === CẤU HÌNH GỬI MAIL QUA CỔNG 465 (SSL) ===
+    // Khắc phục lỗi Timeout khi cổng 587 bị chặn
     const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
-        port: 587,
-        secure: false, // true for 465, false for other ports
+        port: 465,            // 👈 Đổi sang cổng 465
+        secure: true,         // 👈 Bắt buộc TRUE với cổng 465
         auth: {
             user: process.env.SMTP_EMAIL,
             pass: process.env.SMTP_PASSWORD,
         },
         tls: {
-            rejectUnauthorized: false // Bỏ qua lỗi chứng chỉ bảo mật
-        },
-        // 🔥 DÒNG QUAN TRỌNG NHẤT ĐỂ SỬA LỖI TIMEOUT:
-        family: 4 // Ép buộc dùng IPv4 (Tránh lỗi ETIMEDOUT do IPv6 trên Render)
+            // Không từ chối chứng chỉ tự ký (giúp tránh lỗi SSL trên Render)
+            rejectUnauthorized: false 
+        }
     });
     try {
         user = await User.findOne({ email });
